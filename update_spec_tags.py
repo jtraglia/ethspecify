@@ -63,7 +63,7 @@ def replace_spec_tags(file_path):
         try:
             version = attributes["version"]
         except KeyError:
-            raise Exception(f"Missing version attribute")
+            version = "nightly"
 
         pyspec = get_pyspec(version)
 
