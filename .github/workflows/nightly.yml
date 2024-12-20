@@ -28,7 +28,6 @@ jobs:
         run: |
           cd consensus-specs
           make pyspec
-          mkdir -p ../nightly/
           cp pyspec.json ../nightly/pyspec.json
 
       - name: Commit and Push Changes
