@@ -1,0 +1,48 @@
+name: Nightly Update
+
+on:
+  schedule:
+    - cron: "0 0 * * *" # Runs nightly at midnight UTC
+  workflow_dispatch: # Allow manual runs
+
+jobs:
+  update-pyspec:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Current Repository
+        uses: actions/checkout@v3
+        with:
+          ref: main
+
+      - name: Clone Consensus Specs
+        run: |
+          git clone https://github.com/ethereum/consensus-specs.git
+
+      - name: Apply Patch to Consensus Specs
+        run: |
+          cd consensus-specs
+          git apply ../write_pyspec_dict.patch
+
+      - name: Build Pyspec JSON
+        run: |
+          cd consensus-specs
+          make pyspec
+          mkdir -p ../nightly/
+          cp pyspec.json ../nightly/pyspec.json
+
+      - name: Commit and Push Changes
+        run: |
+          git config --global user.name "GitHub Actions"
+          git config --global user.email "actions@github.com"
+
+          # Check if there are any changes
+          if ! git diff --quiet; then
+            git add nightly/pyspec.json
+            git commit -m "Update nightly pyspec.json"
+            git push
+          else
+            echo "No changes detected. Skipping commit."
+          fi
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
