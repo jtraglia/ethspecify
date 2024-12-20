@@ -14,8 +14,8 @@ In your client, add an HTML tag (don't forget the closing tag) like this:
  */
 ```
 
-This supports all languages and comment styles. It will preserve the indentation, so something like
-this would also work:
+This supports all languages and comment styles. It preserves indentation, so something like this
+would also work:
 
 ```csharp
 /// <spec function="is_compounding_withdrawal_credential" fork="electra" version="nightly"></spec>
@@ -98,7 +98,7 @@ For preset variables, in addition to the `preset_var` attribute, you can specify
 attribute: minimal or mainnet.
 
 ```c
-/*
+/**
  * <spec preset="minimal" preset_var="PENDING_CONSOLIDATIONS_LIMIT" fork="electra" version="nightly">
  * PENDING_CONSOLIDATIONS_LIMIT: uint64 = 64
  * </spec>
@@ -169,7 +169,7 @@ These are classes with the `@dataclass` decorator.
 These are all the functions found in the specifications.
 
 ```c
-/*
+/**
  * <spec function="is_fully_withdrawable_validator" fork="deneb" version="nightly">
  * def is_fully_withdrawable_validator(validator: Validator, balance: Gwei, epoch: Epoch) -> bool:
  *     """
@@ -185,7 +185,7 @@ These are all the functions found in the specifications.
 ```
 
 ```c
-/*
+/**
  * <spec function="is_fully_withdrawable_validator" fork="electra" version="nightly">
  * def is_fully_withdrawable_validator(validator: Validator, balance: Gwei, epoch: Epoch) -> bool:
  *     """
