@@ -23,7 +23,6 @@ def grep(root_directory, search_pattern):
                 with open(file_path, "r", encoding="utf-8") as file:
                     if any(regex.search(line) for line in file):
                         matched_files.append(file_path)
-                        break
             except (UnicodeDecodeError, IOError):
                 continue
     return matched_files
