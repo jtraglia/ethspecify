@@ -8,7 +8,7 @@ A tool for referencing the Ethereum specifications in clients.
 
 In your client, add an HTML tag (don't forget the closing tag) like this:
 
-```c
+```
 /**
  * <spec function="is_fully_withdrawable_validator" fork="deneb"></spec>
  */
@@ -17,13 +17,13 @@ In your client, add an HTML tag (don't forget the closing tag) like this:
 This supports all languages and comment styles. It preserves indentation, so something like this
 would also work:
 
-```csharp
+```
 /// <spec function="is_compounding_withdrawal_credential" fork="electra"></spec>
 ```
 
 After the script is finished executing, the spec tag will be updated to be:
 
-```csharp
+```
 /// <spec function="is_compounding_withdrawal_credential" fork="electra">
 /// def is_compounding_withdrawal_credential(withdrawal_credentials: Bytes32) -> bool:
 ///     return withdrawal_credentials[:1] == COMPOUNDING_WITHDRAWAL_PREFIX
@@ -34,14 +34,14 @@ After the script is finished executing, the spec tag will be updated to be:
 
 First, clone the repository. You only need the latest commit.
 
-```bash
+```
 git clone https://github.com/jtraglia/eth-spec-tags.git --depth=1
 cd eth-spec-tags
 ```
 
 Then, run the `update_spec_tags.py` script and provide the path to your client.
 
-```bash
+```
 ./update_spec_tags.py --project-path=~/Projects/client
 Processing file: /Users/user/Projects/client/src/file.ext
 spec tag: {'custom_type': 'Blob', 'fork': 'electra'}
@@ -69,7 +69,7 @@ deneb, electra, fulu, whisk, eip6800, and eip7732.
 
 These are items found in the `Constants` section of the specifications.
 
-```c
+```
 /**
  * <spec constant_var="COMPOUNDING_WITHDRAWAL_PREFIX" fork="electra">
  * COMPOUNDING_WITHDRAWAL_PREFIX: Bytes1 = '0x02'
@@ -81,7 +81,7 @@ These are items found in the `Constants` section of the specifications.
 
 These are items found in the `Custom types` section of the specifications.
 
-```c
+```
 /**
  * <spec custom_type="Blob" fork="electra">
  * Blob = ByteVector[BYTES_PER_FIELD_ELEMENT * FIELD_ELEMENTS_PER_BLOB]
@@ -97,7 +97,7 @@ These are items found in the
 For preset variables, in addition to the `preset_var` attribute, you can specify a `preset`
 attribute: minimal or mainnet.
 
-```c
+```
 /**
  * <spec preset="minimal" preset_var="PENDING_CONSOLIDATIONS_LIMIT" fork="electra">
  * PENDING_CONSOLIDATIONS_LIMIT: uint64 = 64
@@ -111,7 +111,7 @@ attribute: minimal or mainnet.
 
 It's not strictly necessary to specify the preset attribute. The default preset is mainnet.
 
-```c
+```
 /**
  * <spec preset_var="FIELD_ELEMENTS_PER_BLOB" fork="electra">
  * FIELD_ELEMENTS_PER_BLOB: uint64 = 4096
@@ -124,7 +124,7 @@ It's not strictly necessary to specify the preset attribute. The default preset 
 These are items found in the
 [`configs`](https://github.com/ethereum/consensus-specs/tree/dev/presets) directory.
 
-```c
+```
 /**
  * <spec config_var="MAX_REQUEST_BLOB_SIDECARS" fork="electra">
  * MAX_REQUEST_BLOB_SIDECARS = 768
@@ -136,7 +136,7 @@ These are items found in the
 
 These are items found in the `Containers` section of the specifications.
 
-```c
+```
 /**
  * <spec ssz_object="ConsolidationRequest" fork="electra">
  * class ConsolidationRequest(Container):
@@ -151,7 +151,7 @@ These are items found in the `Containers` section of the specifications.
 
 These are classes with the `@dataclass` decorator.
 
-```c
+```
 /**
  * <spec dataclass="PayloadAttributes" fork="electra">
  * class PayloadAttributes(object):
@@ -168,7 +168,7 @@ These are classes with the `@dataclass` decorator.
 
 These are all the functions found in the specifications.
 
-```c
+```
 /**
  * <spec function="is_fully_withdrawable_validator" fork="deneb">
  * def is_fully_withdrawable_validator(validator: Validator, balance: Gwei, epoch: Epoch) -> bool:
@@ -184,7 +184,7 @@ These are all the functions found in the specifications.
  */
 ```
 
-```c
+```
 /**
  * <spec function="is_fully_withdrawable_validator" fork="electra">
  * def is_fully_withdrawable_validator(validator: Validator, balance: Gwei, epoch: Epoch) -> bool:
