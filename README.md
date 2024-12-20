@@ -53,8 +53,8 @@ spec tag: {'ssz_object': 'ConsolidationRequest', 'fork': 'electra', 'version': '
 
 #### Version
 
-This attribute can be a release version (_e.g._, `version="v1.5.0-alpha.10`) or "nightly" to get the
-latest & greatest. The nightly specifications are updated everyday at UTC midnight.
+This attribute can be a release version (_e.g._, `version="v1.5.0-alpha.10"`) or "nightly" to get
+the latest & greatest. The nightly specifications are updated everyday at UTC midnight.
 
 #### Fork
 
