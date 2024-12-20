@@ -2,33 +2,9 @@
 
 A tool for referencing the Ethereum specifications in clients.
 
-## How to use it
+## Getting Started
 
-### Getting Started
-
-First, clone the repository. You only need the latest commit.
-
-```bash
-git clone https://github.com/jtraglia/eth-spec-tags.git --depth=1
-cd eth-spec-tags
-```
-
-Then, run the `update_spec_tags.py` script and provide the path to your client.
-
-```bash
-./update_spec_tags.py --project-path=~/Projects/client
-Processing file: /Users/user/Projects/client/src/file.go
-spec tag: {'config_var': 'MAX_REQUEST_BLOB_SIDECARS', 'fork': 'electra', 'version': 'nightly'}
-spec tag: {'constant_var': 'COMPOUNDING_WITHDRAWAL_PREFIX', 'fork': 'electra', 'version': 'nightly'}
-spec tag: {'custom_type': 'Blob', 'fork': 'electra', 'version': 'nightly'}
-spec tag: {'dataclass': 'PayloadAttributes', 'fork': 'electra', 'version': 'nightly'}
-spec tag: {'function': 'is_compounding_withdrawal_credential', 'fork': 'electra', 'version': 'nightly'}
-spec tag: {'function': 'is_fully_withdrawable_validator', 'fork': 'deneb', 'version': 'nightly'}
-spec tag: {'function': 'is_fully_withdrawable_validator', 'fork': 'electra', 'version': 'nightly'}
-spec tag: {'preset_var': 'FIELD_ELEMENTS_PER_BLOB', 'fork': 'electra', 'version': 'nightly'}
-spec tag: {'preset_var': 'PENDING_PARTIAL_WITHDRAWALS_LIMIT', 'fork': 'electra', 'version': 'nightly'}
-spec tag: {'ssz_object': 'ConsolidationRequest', 'fork': 'electra', 'version': 'nightly'}
-```
+### Add Spec Tags
 
 In your client, add an HTML tag (don't forget the closing tag) like this:
 
@@ -54,6 +30,25 @@ After the script is finished executing, the spec tag will be updated to be:
 /// </spec>
 ```
 
+### Running the Script
+
+First, clone the repository. You only need the latest commit.
+
+```bash
+git clone https://github.com/jtraglia/eth-spec-tags.git --depth=1
+cd eth-spec-tags
+```
+
+Then, run the `update_spec_tags.py` script and provide the path to your client.
+
+```bash
+./update_spec_tags.py --project-path=~/Projects/client
+Processing file: /Users/user/Projects/client/src/file.ext
+spec tag: {'custom_type': 'Blob', 'fork': 'electra', 'version': 'nightly'}
+spec tag: {'dataclass': 'PayloadAttributes', 'fork': 'electra', 'version': 'nightly'}
+spec tag: {'ssz_object': 'ConsolidationRequest', 'fork': 'electra', 'version': 'nightly'}
+```
+
 ### Specification Options
 
 #### Version
@@ -65,18 +60,8 @@ latest & greatest. The nightly specifications are updated everyday at UTC midnig
 
 This attribute can be any of the [executable
 specifications](https://github.com/ethereum/consensus-specs/blob/e6bddd966214a19d2b97199bbe3c02577a22a8b4/Makefile#L3-L15)
-in the consensus-specs. At the time of writing, these are:
-
-* phase0
-* altair
-* bellatrix
-* capella
-* deneb
-* electra
-* fulu
-* whisk
-* eip6800
-* eip7732
+in the consensus-specs. At the time of writing, these are: phase0, altair, bellatrix, capella,
+deneb, electra, fulu, whisk, eip6800, and eip7732.
 
 ### Supported Specification Items
 
