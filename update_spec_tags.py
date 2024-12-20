@@ -4,9 +4,13 @@ import argparse
 import json
 import os
 import re
+import functools
 
-with open("../pyspec.json", "r") as file:
-    pyspec = json.load(file)
+
+@functools.lru_cache()
+def get_pyspec(version):
+    with open(f"{version}/pyspec.json", "r") as file:
+        return json.load(file)
 
 
 def grep(root_directory, search_pattern):
@@ -48,32 +52,82 @@ def replace_spec_tags(file_path):
 
         try:
             preset = attributes["preset"]
-        except KeyError as e:
+        except KeyError:
             preset = "mainnet"
 
         try:
             fork = attributes["fork"]
-        except KeyError as e:
+        except KeyError:
             raise Exception(f"Missing fork attribute")
 
         try:
-            function = attributes["function"]
-        except KeyError as e:
-            raise Exception(f"Missing function attribute")
+            version = attributes["version"]
+        except KeyError:
+            raise Exception(f"Missing version attribute")
 
-        try:
-            fn = pyspec[preset][fork]["functions"][function]
-        except KeyError as e:
-            raise Exception(f"No such function: {function}")
+        pyspec = get_pyspec(version)
+
+        spec = None
+        if "function" in attributes:
+            spec = pyspec[preset][fork]["functions"][attributes["function"]]
+        if "constant_var" in attributes:
+            if spec is not None:
+                raise Exception(f"Tag can only specify one spec item")
+            info = pyspec[preset][fork]["constant_vars"][attributes["constant_var"]]
+            spec = (
+                attributes["constant_var"]
+                + (": " + info[0] if info[0] is not None else "")
+                + " = "
+                + info[1]
+            )
+        if "preset_var" in attributes:
+            if spec is not None:
+                raise Exception(f"Tag can only specify one spec item")
+            info = pyspec[preset][fork]["preset_vars"][attributes["preset_var"]]
+            spec = (
+                attributes["preset_var"]
+                + (": " + info[0] if info[0] is not None else "")
+                + " = "
+                + info[1]
+            )
+        if "config_var" in attributes:
+            if spec is not None:
+                raise Exception(f"Tag can only specify one spec item")
+            info = pyspec[preset][fork]["config_vars"][attributes["config_var"]]
+            spec = (
+                attributes["config_var"]
+                + (": " + info[0] if info[0] is not None else "")
+                + " = "
+                + info[1]
+            )
+        if "custom_type" in attributes:
+            if spec is not None:
+                raise Exception(f"Tag can only specify one spec item")
+            spec = (
+                attributes["custom_type"]
+                + " = "
+                + pyspec[preset][fork]["custom_types"][attributes["custom_type"]]
+            )
+        if "ssz_object" in attributes:
+            if spec is not None:
+                raise Exception(f"Tag can only specify one spec item")
+            spec = pyspec[preset][fork]["ssz_objects"][attributes["ssz_object"]]
+        if "dataclass" in attributes:
+            if spec is not None:
+                raise Exception(f"Tag can only specify one spec item")
+            spec = pyspec[preset][fork]["dataclasses"][attributes["dataclass"]].replace("@dataclass\n", "")
+
+        if spec is None:
+            raise Exception(f"Tag does not specify spec item type")
 
         # Extract the prefix from the previous line in the raw file
         prefix = content[:match.start()].splitlines()[-1]
         # Format the new function content with the extracted prefix
-        new_fn = "\n".join(f"{prefix}{line}" if line.strip() else prefix for line in fn.strip().split("\n"))
+        prefixed_spec = "\n".join(f"{prefix}{line}" if line.strip() else prefix for line in spec.strip().split("\n"))
         # Unescape and rebuild the <spec> tag with its original attributes
-        updated_spec = f"{opening_tag}\n{new_fn}\n{prefix}{closing_tag}"
+        updated_tag = f"{opening_tag}\n{prefixed_spec}\n{prefix}{closing_tag}"
 
-        return updated_spec
+        return updated_tag
 
     # Replace all matches in the content
     updated_content = pattern.sub(replacer, content)
