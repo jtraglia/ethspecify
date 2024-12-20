@@ -9,7 +9,7 @@ import functools
 
 @functools.lru_cache()
 def get_pyspec(version):
-    with open(f"{version}/pyspec.json", "r") as file:
+    with open(f"pyspecs/{version}/pyspec.json", "r") as file:
         return json.load(file)
 
 
