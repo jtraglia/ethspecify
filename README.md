@@ -42,7 +42,7 @@ cd eth-spec-tags
 Then, run the `update_spec_tags.py` script and provide the path to your client.
 
 ```
-./update_spec_tags.py --project-path=~/Projects/client
+./update_spec_tags.py --path=~/Projects/client
 Processing file: /Users/user/Projects/client/src/file.ext
 spec tag: {'custom_type': 'Blob', 'fork': 'electra'}
 spec tag: {'dataclass': 'PayloadAttributes', 'fork': 'electra'}

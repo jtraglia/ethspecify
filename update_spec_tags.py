@@ -13,12 +13,15 @@ def get_pyspec(version):
         return json.load(file)
 
 
-def grep(root_directory, search_pattern):
+def grep(root_directory, search_pattern, excludes=[]):
     matched_files = []
     regex = re.compile(search_pattern)
+    exclude_patterns = [re.compile(pattern) for pattern in excludes]
     for dirpath, _, filenames in os.walk(root_directory):
         for filename in filenames:
             file_path = os.path.join(dirpath, filename)
+            if any(pattern.search(file_path) for pattern in exclude_patterns):
+                continue
             try:
                 with open(file_path, "r", encoding="utf-8") as file:
                     if any(regex.search(line) for line in file):
@@ -137,29 +140,26 @@ def replace_spec_tags(file_path):
 
 
 if __name__ == "__main__":
-    # Set up the argument parser
     parser = argparse.ArgumentParser(description="Process files containing <spec> tags.")
     parser.add_argument(
-        "--project-path",
+        "--path",
         type=str,
         required=True,
-        help="Path to the project directory to search for files containing <spec> tags.",
+        help="Directory to search for files containing <spec> tags",
     )
-
-    # Parse the arguments
+    parser.add_argument(
+        "--exclude",
+        action="append",
+        help="Exclude paths matching this regex",
+        default=[],
+    )
     args = parser.parse_args()
 
-    # Normalize the provided project path
-    project_dir = os.path.abspath(os.path.expanduser(args.project_path))
-
-    # Check if the directory exists
+    project_dir = os.path.abspath(os.path.expanduser(args.path))
     if not os.path.isdir(project_dir):
         print(f"Error: The directory '{project_dir}' does not exist.")
         exit(1)
 
-    pattern = r"<spec\b.*?>"
-    files = grep(project_dir, pattern)
-
-    for f in files:
+    for f in grep(project_dir, r"<spec\b.*?>", args.exclude):
         print(f"Processing file: {f}")
         replace_spec_tags(f)
