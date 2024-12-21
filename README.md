@@ -2,9 +2,14 @@
 
 A tool for referencing the Ethereum specifications in clients.
 
+The idea is that eth-spec-tags will help developers keep track of when the specification changes. It
+will also help auditors verify that the client implementations match the specifications. Ideally,
+this is configured as a CI check which notifies client developers when the specification changes.
+When that happens, they can update the implementations appropriately.
+
 ## Getting Started
 
-### Add Spec Tags
+### Adding Spec Tags
 
 In your client, add an HTML tag (don't forget the closing tag) like this:
 
@@ -53,8 +58,9 @@ spec tag: {'ssz_object': 'ConsolidationRequest', 'fork': 'electra'}
 
 #### Version
 
-This attribute can be a release version (_e.g._, `version="v1.5.0-alpha.10"`) or "nightly" to get
-the latest & greatest. The nightly specifications are updated everyday at UTC midnight.
+By default, the specification version will be "nightly" which is updated everyday at UTC midnight.
+If you wish to reference an item from a specific release, use the version attribute (_e.g._,
+`version="v1.5.0-alpha.10"`).
 
 #### Fork
 
