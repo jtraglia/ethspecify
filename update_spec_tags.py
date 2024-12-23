@@ -125,7 +125,7 @@ def replace_spec_tags(file_path):
         # Extract the prefix from the previous line in the raw file
         prefix = content[:match.start()].splitlines()[-1]
         # Format the new function content with the extracted prefix
-        prefixed_spec = "\n".join(f"{prefix}{line}" if line.strip() else prefix.strip() for line in spec.strip().split("\n"))
+        prefixed_spec = "\n".join(f"{prefix}{line}" if line.strip() else prefix.rstrip() for line in spec.strip().split("\n"))
         # Unescape and rebuild the <spec> tag with its original attributes
         updated_tag = f"{opening_tag}\n{prefixed_spec}\n{prefix}{closing_tag}"
 
