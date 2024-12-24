@@ -9,7 +9,9 @@ import functools
 
 @functools.lru_cache()
 def get_pyspec(version):
-    with open(f"pyspecs/{version}/pyspec.json", "r") as file:
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    file_path = os.path.join(script_dir, f"pyspecs/{version}/pyspec.json")
+    with open(file_path, "r") as file:
         return json.load(file)
 
 
