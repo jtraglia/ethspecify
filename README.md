@@ -69,6 +69,60 @@ specifications](https://github.com/ethereum/consensus-specs/blob/e6bddd966214a19
 in the consensus-specs. At the time of writing, these are: phase0, altair, bellatrix, capella,
 deneb, electra, fulu, whisk, eip6800, and eip7732.
 
+#### Style
+
+This attribute can be used to change how the specification is shown in the tag content. By default,
+this is `full` which shows the entire item (like function) but there's also a `diff` option which
+will show a diff to the last fork that modified that specification.
+
+For example, this might look like for Electra's `BeaconState` container:
+
+```
+/*
+ * <spec ssz_object="BeaconState" fork="electra" style="diff">
+ * --- capella
+ * +++ electra
+ * @@ -27,3 +27,12 @@
+ *      next_withdrawal_index: WithdrawalIndex
+ *      next_withdrawal_validator_index: ValidatorIndex
+ *      historical_summaries: List[HistoricalSummary, HISTORICAL_ROOTS_LIMIT]
+ * +    deposit_requests_start_index: uint64
+ * +    deposit_balance_to_consume: Gwei
+ * +    exit_balance_to_consume: Gwei
+ * +    earliest_exit_epoch: Epoch
+ * +    consolidation_balance_to_consume: Gwei
+ * +    earliest_consolidation_epoch: Epoch
+ * +    pending_deposits: List[PendingDeposit, PENDING_DEPOSITS_LIMIT]
+ * +    pending_partial_withdrawals: List[PendingPartialWithdrawal, PENDING_PARTIAL_WITHDRAWALS_LIMIT]
+ * +    pending_consolidations: List[PendingConsolidation, PENDING_CONSOLIDATIONS_LIMIT]
+ * </spec>
+ */
+```
+
+Please note that comments are stripped from the specifications when the `diff` style is used. We do
+this because these complicate the diff; the "[Modified in Fork]" comments aren't valuable here.
+
+At the top of the diff, it will show the previous fork which modified this specification and the
+current fork. This is especially helpful if something hasn't been updated in a while.
+
+This can be used with any specification item, like functions too:
+
+```
+/*
+ * <spec function="is_eligible_for_activation_queue" fork="electra" style="diff">
+ * --- phase0
+ * +++ electra
+ * @@ -4,5 +4,5 @@
+ *      """
+ *      return (
+ *          validator.activation_eligibility_epoch == FAR_FUTURE_EPOCH
+ * -        and validator.effective_balance == MAX_EFFECTIVE_BALANCE
+ * +        and validator.effective_balance >= MIN_ACTIVATION_BALANCE
+ *      )
+ * </spec>
+ */
+```
+
 ### Supported Specification Items
 
 #### Constants
