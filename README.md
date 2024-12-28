@@ -14,7 +14,7 @@ When that happens, they can update the implementations appropriately.
 In your client, add an HTML tag (don't forget the closing tag) like this:
 
 ```
-/**
+/*
  * <spec function="is_fully_withdrawable_validator" fork="deneb"></spec>
  */
 ```
@@ -130,7 +130,7 @@ This can be used with any specification item, like functions too:
 These are items found in the `Constants` section of the specifications.
 
 ```
-/**
+/*
  * <spec constant_var="COMPOUNDING_WITHDRAWAL_PREFIX" fork="electra">
  * COMPOUNDING_WITHDRAWAL_PREFIX: Bytes1 = '0x02'
  * </spec>
@@ -142,7 +142,7 @@ These are items found in the `Constants` section of the specifications.
 These are items found in the `Custom types` section of the specifications.
 
 ```
-/**
+/*
  * <spec custom_type="Blob" fork="electra">
  * Blob = ByteVector[BYTES_PER_FIELD_ELEMENT * FIELD_ELEMENTS_PER_BLOB]
  * </spec>
@@ -158,7 +158,7 @@ For preset variables, in addition to the `preset_var` attribute, you can specify
 attribute: minimal or mainnet.
 
 ```
-/**
+/*
  * <spec preset="minimal" preset_var="PENDING_CONSOLIDATIONS_LIMIT" fork="electra">
  * PENDING_CONSOLIDATIONS_LIMIT: uint64 = 64
  * </spec>
@@ -172,7 +172,7 @@ attribute: minimal or mainnet.
 It's not strictly necessary to specify the preset attribute. The default preset is mainnet.
 
 ```
-/**
+/*
  * <spec preset_var="FIELD_ELEMENTS_PER_BLOB" fork="electra">
  * FIELD_ELEMENTS_PER_BLOB: uint64 = 4096
  * </spec>
@@ -185,7 +185,7 @@ These are items found in the
 [`configs`](https://github.com/ethereum/consensus-specs/tree/dev/presets) directory.
 
 ```
-/**
+/*
  * <spec config_var="MAX_REQUEST_BLOB_SIDECARS" fork="electra">
  * MAX_REQUEST_BLOB_SIDECARS = 768
  * </spec>
@@ -197,7 +197,7 @@ These are items found in the
 These are items found in the `Containers` section of the specifications.
 
 ```
-/**
+/*
  * <spec ssz_object="ConsolidationRequest" fork="electra">
  * class ConsolidationRequest(Container):
  *     source_address: ExecutionAddress
@@ -212,7 +212,7 @@ These are items found in the `Containers` section of the specifications.
 These are classes with the `@dataclass` decorator.
 
 ```
-/**
+/*
  * <spec dataclass="PayloadAttributes" fork="electra">
  * class PayloadAttributes(object):
  *     timestamp: uint64
@@ -229,7 +229,7 @@ These are classes with the `@dataclass` decorator.
 These are all the functions found in the specifications.
 
 ```
-/**
+/*
  * <spec function="is_fully_withdrawable_validator" fork="deneb">
  * def is_fully_withdrawable_validator(validator: Validator, balance: Gwei, epoch: Epoch) -> bool:
  *     """
@@ -245,7 +245,7 @@ These are all the functions found in the specifications.
 ```
 
 ```
-/**
+/*
  * <spec function="is_fully_withdrawable_validator" fork="electra">
  * def is_fully_withdrawable_validator(validator: Validator, balance: Gwei, epoch: Epoch) -> bool:
  *     """
