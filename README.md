@@ -228,6 +228,8 @@ These are classes with the `@dataclass` decorator.
 
 These are all the functions found in the specifications.
 
+For example, two versions of the same function:
+
 ```
 /*
  * <spec function="is_fully_withdrawable_validator" fork="deneb">
@@ -259,3 +261,29 @@ These are all the functions found in the specifications.
  * </spec>
  */
 ```
+
+With functions, it's possible to specify which line/lines should be displayed. For example:
+
+```
+/*
+ * <spec function="is_fully_withdrawable_validator" fork="electra" lines="5-9">
+ * return (
+ *     has_execution_withdrawal_credential(validator)  # [Modified in Electra:EIP7251]
+ *     and validator.withdrawable_epoch <= epoch
+ *     and balance > 0
+ * )
+ * </spec>
+ */
+```
+
+Note that the content is automatically dedented.
+
+Or, to display just a single line, only specify a single number. For example:
+
+```
+/*
+ * <spec function="is_fully_withdrawable_validator" fork="electra" lines="6">
+ * has_execution_withdrawal_credential(validator)  # [Modified in Electra:EIP7251]
+ * </spec>
+ */
+ ```

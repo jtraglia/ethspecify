@@ -7,6 +7,7 @@ import io
 import json
 import os
 import re
+import textwrap
 import tokenize
 
 
@@ -107,6 +108,30 @@ def get_spec(pyspec, attributes, preset, fork):
     spec = None
     if "function" in attributes:
         spec = pyspec[preset][fork]["functions"][attributes["function"]]
+        spec_lines = spec.split("\n")
+        start, end = None, None
+
+        try:
+            vars = attributes["lines"].split("-")
+            if len(vars) == 1:
+                start = min(len(spec_lines), max(1, int(vars[0])))
+                end = start
+            elif len(vars) == 2:
+                start = min(len(spec_lines), max(1, int(vars[0])))
+                end = max(1, min(len(spec_lines), int(vars[1])))
+            else:
+                raise Exception(f"Invalid lines range for {attributes['function']}: {attributes['lines']}")
+        except KeyError:
+            pass
+
+        if start or end:
+            start = start or 1
+            if start > end:
+                raise Exception(f"Invalid lines range for {attributes['function']}: ({start}, {end})")
+            # Subtract one because line numbers are one-indexed
+            spec = "\n".join(spec_lines[start-1:end])
+            spec = textwrap.dedent(spec)
+
     elif "constant_var" in attributes:
         if spec is not None:
             raise Exception(f"Tag can only specify one spec item")
@@ -240,7 +265,7 @@ def replace_spec_tags(file_path):
         # Extract the prefix from the previous line in the raw file
         prefix = content[:match.start()].splitlines()[-1]
         # Format the new function content with the extracted prefix
-        prefixed_spec = "\n".join(f"{prefix}{line}" if line.strip() else prefix.rstrip() for line in spec.strip().split("\n"))
+        prefixed_spec = "\n".join(f"{prefix}{line}" if line.rstrip() else prefix.rstrip() for line in spec.rstrip().split("\n"))
         # Unescape and rebuild the <spec> tag with its original attributes
         updated_tag = f"{opening_tag}\n{prefixed_spec}\n{prefix}{closing_tag}"
 
