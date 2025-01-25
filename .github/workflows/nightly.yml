@@ -27,7 +27,7 @@ jobs:
       - name: Build Pyspec JSON
         run: |
           cd consensus-specs
-          make eth2spec
+          make pyspec
           cp pyspec.json ../pyspecs/nightly/pyspec.json
 
       - name: Commit and Push Changes
