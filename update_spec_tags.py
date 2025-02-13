@@ -210,7 +210,7 @@ def parse_common_attributes(attributes):
     try:
         style = attributes["style"]
     except KeyError:
-        style = "full"
+        style = "hash"
 
     return preset, fork, version, style
 
@@ -219,7 +219,7 @@ def get_spec_item(attributes):
     pyspec = get_pyspec(version)
     spec = get_spec(pyspec, attributes, preset, fork)
 
-    if style == "full":
+    if style == "full" or style == "hash":
         return spec
     elif style == "diff":
         previous_forks = get_previous_forks(pyspec, fork)
@@ -261,14 +261,18 @@ def replace_spec_tags(file_path):
     pattern = re.compile(r'(<spec\b.*?>)(.*?)(</spec>)', re.DOTALL)
 
     def replacer(match):
-        # Extract the opening tag, inner content, and closing tag
+        # Extract the opening and closing tags
         opening_tag = match.group(1)
         closing_tag = match.group(3)
 
         # Extract attributes from the opening tag
         attributes = extract_attributes(opening_tag)
         print(f"spec tag: {attributes}")
-        spec = get_spec_item(attributes)
+
+        # Parse common attributes to get style, version, etc.
+        preset, fork, version, style = parse_common_attributes(attributes)
+        pyspec = get_pyspec(version)
+        spec = get_spec(pyspec, attributes, preset, fork)
 
         # Compute the first 8 characters of the SHA256 hash of the spec content.
         hash_value = hashlib.sha256(spec.encode('utf-8')).hexdigest()[:8]
@@ -283,12 +287,15 @@ def replace_spec_tags(file_path):
         else:
             opening_tag = opening_tag[:-1] + f' hash="{hash_value}">'
 
-        # Extract the prefix from the previous line in the raw file
-        prefix = content[:match.start()].splitlines()[-1]
-        # Format the new function content with the extracted prefix
-        prefixed_spec = "\n".join(f"{prefix}{line}" if line.rstrip() else prefix.rstrip() for line in spec.rstrip().split("\n"))
-        # Unescape and rebuild the <spec> tag with its original attributes
-        updated_tag = f"{opening_tag}\n{prefixed_spec}\n{prefix}{closing_tag}"
+        if style == "hash":
+            # For hash style, only output the updated tags (no spec content).
+            updated_tag = f"{opening_tag}{closing_tag}"
+        else:
+            # For full and diff styles, include the spec content.
+            spec_content = get_spec_item(attributes)
+            prefix = content[:match.start()].splitlines()[-1]
+            prefixed_spec = "\n".join(f"{prefix}{line}" if line.rstrip() else prefix.rstrip() for line in spec_content.rstrip().split("\n"))
+            updated_tag = f"{opening_tag}\n{prefixed_spec}\n{prefix}{closing_tag}"
 
         return updated_tag
 
