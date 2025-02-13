@@ -94,7 +94,7 @@ This style displays the whole content of this specification item, including comm
 
 ```
 /*
- * <spec fn="is_fully_withdrawable_validator" fork="deneb">
+ * <spec fn="is_fully_withdrawable_validator" fork="deneb" style="full">
  * def is_fully_withdrawable_validator(validator: Validator, balance: Gwei, epoch: Epoch) -> bool:
  *     """
  *     Check if ``validator`` is fully withdrawable.
@@ -104,6 +104,21 @@ This style displays the whole content of this specification item, including comm
  *         and validator.withdrawable_epoch <= epoch
  *         and balance > 0
  *     )
+ * </spec>
+ */
+```
+
+##### `link`
+
+> [!WARNING]
+> This feature is a work-in-progress.
+
+This style displays a GitHub link to the specification item.
+
+```
+/*
+ * <spec fn="apply_pending_deposit" fork="electra" style="link" hash="83ee9126">
+ * https://github.com/ethereum/consensus-specs/blob/dev/specs/electra/beacon-chain.md#new-apply_pending_deposit
  * </spec>
  */
 ```
@@ -164,7 +179,7 @@ These are items found in the `Constants` section of the specifications.
 
 ```
 /*
- * <spec constant_var="COMPOUNDING_WITHDRAWAL_PREFIX" fork="electra">
+ * <spec constant_var="COMPOUNDING_WITHDRAWAL_PREFIX" fork="electra" style="full">
  * COMPOUNDING_WITHDRAWAL_PREFIX: Bytes1 = '0x02'
  * </spec>
  */
@@ -176,7 +191,7 @@ These are items found in the `Custom types` section of the specifications.
 
 ```
 /*
- * <spec custom_type="Blob" fork="electra">
+ * <spec custom_type="Blob" fork="electra" style="full">
  * Blob = ByteVector[BYTES_PER_FIELD_ELEMENT * FIELD_ELEMENTS_PER_BLOB]
  * </spec>
  */
@@ -192,11 +207,11 @@ attribute: minimal or mainnet.
 
 ```
 /*
- * <spec preset="minimal" preset_var="PENDING_CONSOLIDATIONS_LIMIT" fork="electra">
+ * <spec preset="minimal" preset_var="PENDING_CONSOLIDATIONS_LIMIT" fork="electra" style="full">
  * PENDING_CONSOLIDATIONS_LIMIT: uint64 = 64
  * </spec>
  *
- * <spec preset="mainnet" preset_var="PENDING_CONSOLIDATIONS_LIMIT" fork="electra">
+ * <spec preset="mainnet" preset_var="PENDING_CONSOLIDATIONS_LIMIT" fork="electra" style="full">
  * PENDING_CONSOLIDATIONS_LIMIT: uint64 = 262144
  * </spec>
  */
@@ -206,7 +221,7 @@ It's not strictly necessary to specify the preset attribute. The default preset 
 
 ```
 /*
- * <spec preset_var="FIELD_ELEMENTS_PER_BLOB" fork="electra">
+ * <spec preset_var="FIELD_ELEMENTS_PER_BLOB" fork="electra" style="full">
  * FIELD_ELEMENTS_PER_BLOB: uint64 = 4096
  * </spec>
  */
@@ -219,7 +234,7 @@ These are items found in the
 
 ```
 /*
- * <spec config_var="MAX_REQUEST_BLOB_SIDECARS" fork="electra">
+ * <spec config_var="MAX_REQUEST_BLOB_SIDECARS" fork="electra" style="full">
  * MAX_REQUEST_BLOB_SIDECARS = 768
  * </spec>
  */
@@ -231,7 +246,7 @@ These are items found in the `Containers` section of the specifications.
 
 ```
 /*
- * <spec ssz_object="ConsolidationRequest" fork="electra">
+ * <spec ssz_object="ConsolidationRequest" fork="electra" style="full">
  * class ConsolidationRequest(Container):
  *     source_address: ExecutionAddress
  *     source_pubkey: BLSPubkey
@@ -246,7 +261,7 @@ These are classes with the `@dataclass` decorator.
 
 ```
 /*
- * <spec dataclass="PayloadAttributes" fork="electra">
+ * <spec dataclass="PayloadAttributes" fork="electra" style="full">
  * class PayloadAttributes(object):
  *     timestamp: uint64
  *     prev_randao: Bytes32
@@ -265,7 +280,7 @@ For example, two versions of the same function:
 
 ```
 /*
- * <spec fn="is_fully_withdrawable_validator" fork="deneb">
+ * <spec fn="is_fully_withdrawable_validator" fork="deneb" style="full">
  * def is_fully_withdrawable_validator(validator: Validator, balance: Gwei, epoch: Epoch) -> bool:
  *     """
  *     Check if ``validator`` is fully withdrawable.
@@ -281,7 +296,7 @@ For example, two versions of the same function:
 
 ```
 /*
- * <spec fn="is_fully_withdrawable_validator" fork="electra">
+ * <spec fn="is_fully_withdrawable_validator" fork="electra" style="full">
  * def is_fully_withdrawable_validator(validator: Validator, balance: Gwei, epoch: Epoch) -> bool:
  *     """
  *     Check if ``validator`` is fully withdrawable.
@@ -299,7 +314,7 @@ With functions, it's possible to specify which line/lines should be displayed. F
 
 ```
 /*
- * <spec fn="is_fully_withdrawable_validator" fork="electra" lines="5-9">
+ * <spec fn="is_fully_withdrawable_validator" fork="electra" style="full" lines="5-9">
  * return (
  *     has_execution_withdrawal_credential(validator)  # [Modified in Electra:EIP7251]
  *     and validator.withdrawable_epoch <= epoch
@@ -315,7 +330,7 @@ Or, to display just a single line, only specify a single number. For example:
 
 ```
 /*
- * <spec fn="is_fully_withdrawable_validator" fork="electra" lines="6">
+ * <spec fn="is_fully_withdrawable_validator" fork="electra" style="full" lines="6">
  * has_execution_withdrawal_credential(validator)  # [Modified in Electra:EIP7251]
  * </spec>
  */
