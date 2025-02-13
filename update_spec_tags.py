@@ -294,8 +294,8 @@ def replace_spec_tags(file_path):
             updated_opening = opening_tag_full[:-1] + f' hash="{hash_value}">'
 
         if style == "hash":
-            # For hash style, output a short self-closing tag.
-            updated_tag = updated_opening.rstrip(">/") + " />"
+            # For hash style, output a short self-closing tag with normalized spacing.
+            updated_tag = re.sub(r'\s*/?>\s*$', '', updated_opening) + " />"
         else:
             # For full/diff styles, output the long form with content.
             spec_content = get_spec_item(attributes)
