@@ -257,16 +257,22 @@ def replace_spec_tags(file_path):
     with open(file_path, 'r') as file:
         content = file.read()
 
-    # Define regex to match <spec> tags
-    pattern = re.compile(r'(<spec\b.*?>)(.*?)(</spec>)', re.DOTALL)
+    # Define regex to match both long and self-closing <spec> tags
+    pattern = re.compile(r'(<spec\b[^>]*)(/?>)(?:([\s\S]*?)(</spec>))?', re.DOTALL)
 
     def replacer(match):
-        # Extract the opening and closing tags
-        opening_tag = match.group(1)
-        closing_tag = match.group(3)
+        # Extract the tag parts:
+        opening_tag_base = match.group(1)
+        tag_end = match.group(2)  # either ">" or "/>"
+        # group(3) and group(4) are present only for long tags
+        inner_content = match.group(3) if match.group(3) else ""
+        closing_tag = match.group(4) if match.group(4) else ""
 
-        # Extract attributes from the opening tag
-        attributes = extract_attributes(opening_tag)
+        # Reconstruct the full opening tag for attribute extraction
+        opening_tag_full = opening_tag_base + tag_end
+
+        # Extract attributes from the full opening tag
+        attributes = extract_attributes(opening_tag_full)
         print(f"spec tag: {attributes}")
 
         # Parse common attributes to get style, version, etc.
@@ -277,25 +283,26 @@ def replace_spec_tags(file_path):
         # Compute the first 8 characters of the SHA256 hash of the spec content.
         hash_value = hashlib.sha256(spec.encode('utf-8')).hexdigest()[:8]
 
-        # If the tag already contains a hash attribute, update it; otherwise, add it.
-        if 'hash="' in opening_tag:
-            opening_tag = re.sub(
+        # Update the full opening tag (opening_tag_full) to include the hash attribute.
+        if 'hash="' in opening_tag_full:
+            updated_opening = re.sub(
                 r'(hash=")[^"]*(")',
                 lambda m: f'{m.group(1)}{hash_value}{m.group(2)}',
-                opening_tag
+                opening_tag_full
             )
         else:
-            opening_tag = opening_tag[:-1] + f' hash="{hash_value}">'
+            updated_opening = opening_tag_full[:-1] + f' hash="{hash_value}">'
 
         if style == "hash":
-            # For hash style, only output the updated tags (no spec content).
-            updated_tag = f"{opening_tag}{closing_tag}"
+            # For hash style, output a short self-closing tag.
+            updated_tag = updated_opening.rstrip(">/") + " />"
         else:
-            # For full and diff styles, include the spec content.
+            # For full/diff styles, output the long form with content.
             spec_content = get_spec_item(attributes)
             prefix = content[:match.start()].splitlines()[-1]
             prefixed_spec = "\n".join(f"{prefix}{line}" if line.rstrip() else prefix.rstrip() for line in spec_content.rstrip().split("\n"))
-            updated_tag = f"{opening_tag}\n{prefixed_spec}\n{prefix}{closing_tag}"
+            long_opening = updated_opening.rstrip(">/") + ">"
+            updated_tag = f"{long_opening}\n{prefixed_spec}\n{prefix}</spec>"
 
         return updated_tag
 
