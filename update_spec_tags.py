@@ -3,6 +3,7 @@
 import argparse
 import difflib
 import functools
+import hashlib
 import io
 import json
 import os
@@ -268,6 +269,19 @@ def replace_spec_tags(file_path):
         attributes = extract_attributes(opening_tag)
         print(f"spec tag: {attributes}")
         spec = get_spec_item(attributes)
+
+        # Compute the first 8 characters of the SHA256 hash of the spec content.
+        hash_value = hashlib.sha256(spec.encode('utf-8')).hexdigest()[:8]
+
+        # If the tag already contains a hash attribute, update it; otherwise, add it.
+        if 'hash="' in opening_tag:
+            opening_tag = re.sub(
+                r'(hash=")[^"]*(")',
+                lambda m: f'{m.group(1)}{hash_value}{m.group(2)}',
+                opening_tag
+            )
+        else:
+            opening_tag = opening_tag[:-1] + f' hash="{hash_value}">'
 
         # Extract the prefix from the previous line in the raw file
         prefix = content[:match.start()].splitlines()[-1]
