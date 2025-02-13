@@ -264,9 +264,6 @@ def replace_spec_tags(file_path):
         # Extract the tag parts:
         opening_tag_base = match.group(1)
         tag_end = match.group(2)  # either ">" or "/>"
-        # group(3) and group(4) are present only for long tags
-        inner_content = match.group(3) if match.group(3) else ""
-        closing_tag = match.group(4) if match.group(4) else ""
 
         # Reconstruct the full opening tag for attribute extraction
         opening_tag_full = opening_tag_base + tag_end
