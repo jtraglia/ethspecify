@@ -106,8 +106,15 @@ def get_previous_forks(pyspec, fork):
 
 def get_spec(pyspec, attributes, preset, fork):
     spec = None
-    if "function" in attributes:
-        spec = pyspec[preset][fork]["functions"][attributes["function"]]
+    if "function" in attributes or "fn" in attributes:
+        if "function" in attributes and "fn" in attributes:
+            raise Exception(f"cannot contain 'function' and 'fn'")
+        if "function" in attributes:
+            function_name = attributes["function"]
+        else:
+            function_name = attributes["fn"]
+
+        spec = pyspec[preset][fork]["functions"][function_name]
         spec_lines = spec.split("\n")
         start, end = None, None
 
@@ -120,14 +127,14 @@ def get_spec(pyspec, attributes, preset, fork):
                 start = min(len(spec_lines), max(1, int(vars[0])))
                 end = max(1, min(len(spec_lines), int(vars[1])))
             else:
-                raise Exception(f"Invalid lines range for {attributes['function']}: {attributes['lines']}")
+                raise Exception(f"Invalid lines range for {function_name}: {attributes['lines']}")
         except KeyError:
             pass
 
         if start or end:
             start = start or 1
             if start > end:
-                raise Exception(f"Invalid lines range for {attributes['function']}: ({start}, {end})")
+                raise Exception(f"Invalid lines range for {function_name}: ({start}, {end})")
             # Subtract one because line numbers are one-indexed
             spec = "\n".join(spec_lines[start-1:end])
             spec = textwrap.dedent(spec)
