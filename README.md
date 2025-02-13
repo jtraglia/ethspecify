@@ -11,11 +11,11 @@ When that happens, they can update the implementations appropriately.
 
 ### Adding Spec Tags
 
-In your client, add an HTML tag (don't forget the closing tag) like this:
+In your client, add an HTML tag like this:
 
 ```
 /*
- * <spec function="is_fully_withdrawable_validator" fork="deneb"></spec>
+ * <spec fn="is_fully_withdrawable_validator" fork="deneb">
  */
 ```
 
@@ -23,17 +23,19 @@ This supports all languages and comment styles. It preserves indentation, so som
 would also work:
 
 ```
-/// <spec function="is_compounding_withdrawal_credential" fork="electra"></spec>
+/// <spec fn="is_fully_withdrawable_validator" fork="deneb">
 ```
 
-After the script is finished executing, the spec tag will be updated to be:
+After the script is finished executing, a new `hash` field will exist in the tag. This tag is used
+to tell if the specification changed, without having to include the specification content.
 
 ```
-/// <spec function="is_compounding_withdrawal_credential" fork="electra">
-/// def is_compounding_withdrawal_credential(withdrawal_credentials: Bytes32) -> bool:
-///     return withdrawal_credentials[:1] == COMPOUNDING_WITHDRAWAL_PREFIX
-/// </spec>
+/// <spec fn="is_fully_withdrawable_validator" fork="deneb" hash="e936da25" />
 ```
+
+> [!NOTE]
+> Closing tags will be added automatically. For `style="hash"` tags, a self-closing tag is used for
+> conciseness. For `style="full"` and `style="diff"` tags, a paired closing tag must be used.
 
 ### Running the Script
 
@@ -71,16 +73,49 @@ deneb, electra, fulu, whisk, eip6800, and eip7732.
 
 #### Style
 
-This attribute can be used to change how the specification is shown in the tag content. By default,
-this is `full` which shows the entire item (like function) but there's also a `diff` option which
-will show a diff to the last fork that modified that specification.
+This attribute can be used to change how the specification content is shown.
 
-For example, this might look like for Electra's `BeaconState` container:
+##### `hash` (default)
+
+This style adds a hash of the specification content to the spec tag, without showing the content.
+
+```
+/*
+ * <spec fn="apply_deposit" fork="electra" hash="c723ce7b" />
+ */
+```
+
+> [!NOTE]
+> The hash is the first 8 characters of the specification content's SHA256 digest.
+
+##### `full`
+
+This style displays the whole content of this specification item, including comments.
+
+```
+/*
+ * <spec fn="is_fully_withdrawable_validator" fork="deneb">
+ * def is_fully_withdrawable_validator(validator: Validator, balance: Gwei, epoch: Epoch) -> bool:
+ *     """
+ *     Check if ``validator`` is fully withdrawable.
+ *     """
+ *     return (
+ *         has_eth1_withdrawal_credential(validator)
+ *         and validator.withdrawable_epoch <= epoch
+ *         and balance > 0
+ *     )
+ * </spec>
+ */
+```
+
+##### `diff`
+
+This style displays a diff with the previous fork's version of the specification.
 
 ```
 /*
  * <spec ssz_object="BeaconState" fork="electra" style="diff">
- * --- capella
+ * --- deneb
  * +++ electra
  * @@ -27,3 +27,12 @@
  *      next_withdrawal_index: WithdrawalIndex
@@ -99,17 +134,15 @@ For example, this might look like for Electra's `BeaconState` container:
  */
 ```
 
-Please note that comments are stripped from the specifications when the `diff` style is used. We do
-this because these complicate the diff; the "[Modified in Fork]" comments aren't valuable here.
-
-At the top of the diff, it will show the previous fork which modified this specification and the
-current fork. This is especially helpful if something hasn't been updated in a while.
+> [!NOTE]
+> Comments are stripped from the specifications when the `diff` style is used. We do this because
+> these complicate the diff; the "[Modified in Fork]" comments aren't valuable here.
 
 This can be used with any specification item, like functions too:
 
 ```
 /*
- * <spec function="is_eligible_for_activation_queue" fork="electra" style="diff">
+ * <spec fn="is_eligible_for_activation_queue" fork="electra" style="diff">
  * --- phase0
  * +++ electra
  * @@ -4,5 +4,5 @@
@@ -232,7 +265,7 @@ For example, two versions of the same function:
 
 ```
 /*
- * <spec function="is_fully_withdrawable_validator" fork="deneb">
+ * <spec fn="is_fully_withdrawable_validator" fork="deneb">
  * def is_fully_withdrawable_validator(validator: Validator, balance: Gwei, epoch: Epoch) -> bool:
  *     """
  *     Check if ``validator`` is fully withdrawable.
@@ -248,7 +281,7 @@ For example, two versions of the same function:
 
 ```
 /*
- * <spec function="is_fully_withdrawable_validator" fork="electra">
+ * <spec fn="is_fully_withdrawable_validator" fork="electra">
  * def is_fully_withdrawable_validator(validator: Validator, balance: Gwei, epoch: Epoch) -> bool:
  *     """
  *     Check if ``validator`` is fully withdrawable.
@@ -266,7 +299,7 @@ With functions, it's possible to specify which line/lines should be displayed. F
 
 ```
 /*
- * <spec function="is_fully_withdrawable_validator" fork="electra" lines="5-9">
+ * <spec fn="is_fully_withdrawable_validator" fork="electra" lines="5-9">
  * return (
  *     has_execution_withdrawal_credential(validator)  # [Modified in Electra:EIP7251]
  *     and validator.withdrawable_epoch <= epoch
@@ -282,7 +315,7 @@ Or, to display just a single line, only specify a single number. For example:
 
 ```
 /*
- * <spec function="is_fully_withdrawable_validator" fork="electra" lines="6">
+ * <spec fn="is_fully_withdrawable_validator" fork="electra" lines="6">
  * has_execution_withdrawal_credential(validator)  # [Modified in Electra:EIP7251]
  * </spec>
  */
