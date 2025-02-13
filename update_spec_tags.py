@@ -86,6 +86,14 @@ def diff(a_name, a_content, b_name, b_content):
 
 
 @functools.lru_cache()
+def get_links(version):
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    file_path = os.path.join(script_dir, f"pyspecs/{version}/links.json")
+    with open(file_path, "r") as file:
+        return json.load(file)
+
+
+@functools.lru_cache()
 def get_pyspec(version):
     script_dir = os.path.dirname(os.path.abspath(__file__))
     file_path = os.path.join(script_dir, f"pyspecs/{version}/pyspec.json")
@@ -244,6 +252,21 @@ def get_spec_item(attributes):
             if previous_spec == "phase0":
                 raise Exception("there is no previous spec for this")
         return diff(previous_fork, strip_comments(previous_spec), fork, strip_comments(spec))
+    if style == "link":
+        if "function" in attributes or "fn" in attributes:
+            if "function" in attributes and "fn" in attributes:
+                raise Exception(f"cannot contain 'function' and 'fn'")
+            if "function" in attributes:
+                function_name = attributes["function"]
+            else:
+                function_name = attributes["fn"]
+            links = get_links(version)
+            for key, value in links.items():
+                if fork in key and key.endswith(function_name):
+                    return value
+            return "Could not find link"
+        else:
+            return "Not available for this type of spec"
     else:
         raise Exception("invalid style type")
 
