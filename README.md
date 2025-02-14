@@ -9,9 +9,15 @@ When that happens, they can update the implementations appropriately.
 
 ## Getting Started
 
+### Installation
+
+```
+python3 -mpip install ethspecify
+```
+
 ### Adding Spec Tags
 
-In your client, add an HTML tag like this:
+In your client, add HTML tags like this:
 
 ```
 /*
@@ -19,71 +25,28 @@ In your client, add an HTML tag like this:
  */
 ```
 
-This supports all languages and comment styles. It preserves indentation, so something like this
-would also work:
+### Populate Spec Tags
+
+Then, navigate to your codebase and run `ethspecify`:
 
 ```
-/// <spec fn="is_fully_withdrawable_validator" fork="deneb">
+ethspecify
 ```
 
-After the script is finished executing, a new `hash` field will exist in the tag. This tag is used
-to tell if the specification changed, without having to include the specification content.
+## Specification Options
 
-```
-/// <spec fn="is_fully_withdrawable_validator" fork="deneb" hash="e936da25" />
-```
-
-> [!NOTE]
-> Closing tags will be added automatically. For `style="hash"` tags, a self-closing tag is used for
-> conciseness. For `style="full"` and `style="diff"` tags, a paired closing tag must be used.
-
-### Installation
-
-#### Install with Pip
-
-```
-python3 -mpip install ethspecify
-```
-
-#### Manual Install
-
-First, clone the repository. You only need the latest commit.
-
-```
-git clone https://github.com/jtraglia/ethspecify.git --depth=1
-cd ethspecify
-```
-
-Next, build and install the utility.
-
-```
-python3 -mpip install .
-```
-
-Then, change directory to the source source directory and run `ethspecify`.
-
-```
-Projects/client$ ethspecify
-Processing file: /Users/user/Projects/client/src/file.ext
-spec tag: {'custom_type': 'Blob', 'fork': 'electra'}
-spec tag: {'dataclass': 'PayloadAttributes', 'fork': 'electra'}
-spec tag: {'ssz_object': 'ConsolidationRequest', 'fork': 'electra'}
-```
-
-### Specification Options
-
-#### Fork
+### Fork
 
 This attribute can be any of the [executable
 specifications](https://github.com/ethereum/consensus-specs/blob/e6bddd966214a19d2b97199bbe3c02577a22a8b4/Makefile#L3-L15)
 in the consensus-specs. At the time of writing, these are: phase0, altair, bellatrix, capella,
 deneb, electra, fulu, whisk, eip6800, and eip7732.
 
-#### Style
+### Style
 
 This attribute can be used to change how the specification content is shown.
 
-##### `hash` (default)
+#### `hash` (default)
 
 This style adds a hash of the specification content to the spec tag, without showing the content.
 
@@ -96,7 +59,7 @@ This style adds a hash of the specification content to the spec tag, without sho
 > [!NOTE]
 > The hash is the first 8 characters of the specification content's SHA256 digest.
 
-##### `full`
+#### `full`
 
 This style displays the whole content of this specification item, including comments.
 
@@ -116,10 +79,7 @@ This style displays the whole content of this specification item, including comm
  */
 ```
 
-##### `link`
-
-> [!WARNING]
-> This feature is a work-in-progress.
+#### `link`
 
 This style displays a GitHub link to the specification item.
 
@@ -131,7 +91,7 @@ This style displays a GitHub link to the specification item.
  */
 ```
 
-##### `diff`
+#### `diff`
 
 This style displays a diff with the previous fork's version of the specification.
 
@@ -179,9 +139,9 @@ This can be used with any specification item, like functions too:
  */
 ```
 
-### Supported Specification Items
+## Supported Specification Items
 
-#### Constants
+### Constants
 
 These are items found in the `Constants` section of the specifications.
 
@@ -193,7 +153,7 @@ These are items found in the `Constants` section of the specifications.
  */
 ```
 
-#### Custom Types
+### Custom Types
 
 These are items found in the `Custom types` section of the specifications.
 
@@ -205,7 +165,7 @@ These are items found in the `Custom types` section of the specifications.
  */
 ```
 
-#### Preset Variables
+### Preset Variables
 
 These are items found in the
 [`presets`](https://github.com/ethereum/consensus-specs/tree/dev/presets) directory.
@@ -235,7 +195,7 @@ It's not strictly necessary to specify the preset attribute. The default preset 
  */
 ```
 
-#### Config Variables
+### Config Variables
 
 These are items found in the
 [`configs`](https://github.com/ethereum/consensus-specs/tree/dev/presets) directory.
@@ -248,7 +208,7 @@ These are items found in the
  */
 ```
 
-#### SSZ Objects
+### SSZ Objects
 
 These are items found in the `Containers` section of the specifications.
 
@@ -263,7 +223,7 @@ These are items found in the `Containers` section of the specifications.
  */
 ```
 
-#### Dataclasses
+### Dataclasses
 
 These are classes with the `@dataclass` decorator.
 
@@ -280,7 +240,7 @@ These are classes with the `@dataclass` decorator.
  */
 ```
 
-#### Functions
+### Functions
 
 These are all the functions found in the specifications.
 
