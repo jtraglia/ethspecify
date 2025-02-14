@@ -2,7 +2,7 @@
 
 A tool for referencing the Ethereum specifications in clients.
 
-The idea is that eth-spec-tags will help developers keep track of when the specification changes. It
+The idea is that ethspecify will help developers keep track of when the specification changes. It
 will also help auditors verify that the client implementations match the specifications. Ideally,
 this is configured as a CI check which notifies client developers when the specification changes.
 When that happens, they can update the implementations appropriately.
