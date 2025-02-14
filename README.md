@@ -1,4 +1,4 @@
-# eth-spec-tags
+# ethspecify
 
 A tool for referencing the Ethereum specifications in clients.
 
@@ -37,19 +37,27 @@ to tell if the specification changed, without having to include the specificatio
 > Closing tags will be added automatically. For `style="hash"` tags, a self-closing tag is used for
 > conciseness. For `style="full"` and `style="diff"` tags, a paired closing tag must be used.
 
-### Running the Script
+### Installation
+
+#### Manual Install
 
 First, clone the repository. You only need the latest commit.
 
 ```
-git clone https://github.com/jtraglia/eth-spec-tags.git --depth=1
-cd eth-spec-tags
+git clone https://github.com/jtraglia/ethspecify.git --depth=1
+cd ethspecify
 ```
 
-Then, run the `update_spec_tags.py` script and provide the path to your client.
+Next, build and install the utility.
 
 ```
-./update_spec_tags.py --path=~/Projects/client
+python3 -mpip install .
+```
+
+Then, change directory to the source source directory and run `ethspecify`.
+
+```
+Projects/client$ ethspecify
 Processing file: /Users/user/Projects/client/src/file.ext
 spec tag: {'custom_type': 'Blob', 'fork': 'electra'}
 spec tag: {'dataclass': 'PayloadAttributes', 'fork': 'electra'}
