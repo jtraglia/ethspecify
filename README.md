@@ -39,6 +39,15 @@ to tell if the specification changed, without having to include the specificatio
 
 ### Installation
 
+#### Install with pip
+
+> [!WARNING]
+> This feature is a work-in-progress.
+
+```
+python3 -mpip install ethspecify
+```
+
 #### Manual Install
 
 First, clone the repository. You only need the latest commit.
