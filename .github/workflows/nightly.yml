@@ -30,6 +30,10 @@ jobs:
           make pyspec
           cp pyspec.json ../pyspec.json
 
+      - name: Build Pyspec Links JSON
+        run: |
+          python3 links.py consensus-specs https://github.com/ethereum/consensus-specs/blob/dev --output links.json
+
       - name: Commit and Push Changes
         run: |
           git config --global user.name "GitHub Actions"
@@ -37,8 +41,8 @@ jobs:
 
           # Check if there are any changes
           if ! git diff --quiet; then
-            git add pyspec.json
-            git commit -m "Update nightly pyspec.json"
+            git add --update
+            git commit -m "nightly update"
             git push
           else
             echo "No changes detected. Skipping commit."
