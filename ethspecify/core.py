@@ -1,6 +1,3 @@
-#!/usr/bin/python3
-
-import argparse
 import difflib
 import functools
 import hashlib
@@ -8,6 +5,7 @@ import io
 import json
 import os
 import re
+import requests
 import textwrap
 import tokenize
 
@@ -87,18 +85,18 @@ def diff(a_name, a_content, b_name, b_content):
 
 @functools.lru_cache()
 def get_links(version):
-    script_dir = os.path.dirname(os.path.abspath(__file__))
-    file_path = os.path.join(script_dir, f"pyspecs/{version}/links.json")
-    with open(file_path, "r") as file:
-        return json.load(file)
+    url = f"https://raw.githubusercontent.com/jtraglia/eth-spec-tags/main/pyspecs/{version}/links.json"
+    response = requests.get(url)
+    response.raise_for_status()
+    return response.json()
 
 
 @functools.lru_cache()
 def get_pyspec(version):
-    script_dir = os.path.dirname(os.path.abspath(__file__))
-    file_path = os.path.join(script_dir, f"pyspecs/{version}/pyspec.json")
-    with open(file_path, "r") as file:
-        return json.load(file)
+    url = f"https://raw.githubusercontent.com/jtraglia/eth-spec-tags/main/pyspecs/{version}/pyspec.json"
+    response = requests.get(url)
+    response.raise_for_status()
+    return response.json()
 
 
 def get_previous_forks(pyspec, fork):
@@ -332,29 +330,3 @@ def replace_spec_tags(file_path):
     # Write the updated content back to the file
     with open(file_path, 'w') as file:
         file.write(updated_content)
-
-
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Process files containing <spec> tags.")
-    parser.add_argument(
-        "--path",
-        type=str,
-        required=True,
-        help="Directory to search for files containing <spec> tags",
-    )
-    parser.add_argument(
-        "--exclude",
-        action="append",
-        help="Exclude paths matching this regex",
-        default=[],
-    )
-    args = parser.parse_args()
-
-    project_dir = os.path.abspath(os.path.expanduser(args.path))
-    if not os.path.isdir(project_dir):
-        print(f"Error: The directory '{project_dir}' does not exist.")
-        exit(1)
-
-    for f in grep(project_dir, r"<spec\b.*?>", args.exclude):
-        print(f"Processing file: {f}")
-        replace_spec_tags(f)
