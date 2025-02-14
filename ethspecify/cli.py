@@ -1,7 +1,7 @@
 import argparse
 import os
 
-from .core import grep, replace_spec_tags  # if you split functionality into core.py
+from .core import grep, replace_spec_tags
 
 def main():
     parser = argparse.ArgumentParser(

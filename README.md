@@ -25,7 +25,13 @@ In your client, add HTML tags like this:
  */
 ```
 
-### Populate Spec Tags
+```
+/*
+ * <spec ssz_object="BeaconState" fork="electra" style="diff">
+ */
+```
+
+### Populating Spec Tags
 
 Then, navigate to your codebase and run `ethspecify`:
 

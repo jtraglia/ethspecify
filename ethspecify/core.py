@@ -272,50 +272,66 @@ def replace_spec_tags(file_path):
     with open(file_path, 'r') as file:
         content = file.read()
 
-    # Define regex to match both long and self-closing <spec> tags
-    pattern = re.compile(r'(<spec\b[^>]*)(/?>)(?:([\s\S]*?)(</spec>))?', re.DOTALL)
+    # Define regex to match self-closing tags and long (paired) tags separately
+    pattern = re.compile(
+        r'(?P<self><spec\b[^>]*\/>)|(?P<long><spec\b[^>]*>[\s\S]*?</spec>)',
+        re.DOTALL
+    )
 
     def replacer(match):
-        # Extract the tag parts:
-        opening_tag_base = match.group(1)
-        tag_end = match.group(2)  # either ">" or "/>"
-
-        # Reconstruct the full opening tag for attribute extraction
-        opening_tag_full = opening_tag_base + tag_end
-
-        # Extract attributes from the full opening tag
-        attributes = extract_attributes(opening_tag_full)
-        print(f"spec tag: {attributes}")
-
-        # Parse common attributes to get preset, fork, style, etc.
-        preset, fork, style = parse_common_attributes(attributes)
-        spec = get_spec(attributes, preset, fork)
-
-        # Compute the first 8 characters of the SHA256 hash of the spec content.
-        hash_value = hashlib.sha256(spec.encode('utf-8')).hexdigest()[:8]
-
-        # Update the full opening tag (opening_tag_full) to include the hash attribute.
-        if 'hash="' in opening_tag_full:
-            updated_opening = re.sub(
-                r'(hash=")[^"]*(")',
-                lambda m: f'{m.group(1)}{hash_value}{m.group(2)}',
-                opening_tag_full
-            )
+        if match.group("self") is not None:
+            # Process self-closing tag
+            tag_text = match.group("self")
+            attributes = extract_attributes(tag_text)
+            print(f"spec tag: {attributes}")
+            preset, fork, style = parse_common_attributes(attributes)
+            spec = get_spec(attributes, preset, fork)
+            hash_value = hashlib.sha256(spec.encode('utf-8')).hexdigest()[:8]
+            if 'hash="' in tag_text:
+                updated_tag = re.sub(
+                    r'(hash=")[^"]*(")',
+                    lambda m: f'{m.group(1)}{hash_value}{m.group(2)}',
+                    tag_text
+                )
+            else:
+                # Insert hash attribute before the trailing '/>'
+                updated_tag = tag_text[:-2] + f' hash="{hash_value}"' + tag_text[-2:]
+            return updated_tag
         else:
-            updated_opening = opening_tag_full[:-1] + f' hash="{hash_value}">'
+            # Process long (paired) tag
+            tag_text = match.group("long")
+            # Extract the opening tag from the long tag (everything up to the first '>')
+            opening_match = re.match(r'(<spec\b[^>]*>)([\s\S]*)(</spec>)', tag_text, re.DOTALL)
+            if not opening_match:
+                return tag_text
+            opening_tag_full = opening_match.group(1)
+            attributes = extract_attributes(opening_tag_full)
+            print(f"spec tag: {attributes}")
+            preset, fork, style = parse_common_attributes(attributes)
+            spec = get_spec(attributes, preset, fork)
+            hash_value = hashlib.sha256(spec.encode('utf-8')).hexdigest()[:8]
+            if 'hash="' in opening_tag_full:
+                updated_opening = re.sub(
+                    r'(hash=")[^"]*(")',
+                    lambda m: f'{m.group(1)}{hash_value}{m.group(2)}',
+                    opening_tag_full
+                )
+            else:
+                updated_opening = opening_tag_full[:-1] + f' hash="{hash_value}">'
+            if style == "hash":
+                updated_tag = re.sub(r'\s*</spec>\s*$', '', updated_opening)
+                updated_tag = re.sub(r'\s*>$', '', updated_tag) + " />"
+            else:
+                spec_content = get_spec_item(attributes)
+                prefix = content[:match.start()].splitlines()[-1]
+                prefixed_spec = "\n".join(
+                    f"{prefix}{line}" if line.rstrip() else prefix.rstrip()
+                    for line in spec_content.rstrip().split("\n")
+                )
+                long_opening = updated_opening.rstrip(">/") + ">"
+                updated_tag = f"{long_opening}\n{prefixed_spec}\n{prefix}</spec>"
+            return updated_tag
 
-        if style == "hash":
-            # For hash style, output a short self-closing tag with normalized spacing.
-            updated_tag = re.sub(r'\s*/?>\s*$', '', updated_opening) + " />"
-        else:
-            # For full/diff styles, output the long form with content.
-            spec_content = get_spec_item(attributes)
-            prefix = content[:match.start()].splitlines()[-1]
-            prefixed_spec = "\n".join(f"{prefix}{line}" if line.rstrip() else prefix.rstrip() for line in spec_content.rstrip().split("\n"))
-            long_opening = updated_opening.rstrip(">/") + ">"
-            updated_tag = f"{long_opening}\n{prefixed_spec}\n{prefix}</spec>"
-
-        return updated_tag
 
     # Replace all matches in the content
     updated_content = pattern.sub(replacer, content)
