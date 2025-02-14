@@ -39,10 +39,7 @@ to tell if the specification changed, without having to include the specificatio
 
 ### Installation
 
-#### Install with pip
-
-> [!WARNING]
-> This feature is a work-in-progress.
+#### Install with Pip
 
 ```
 python3 -mpip install ethspecify

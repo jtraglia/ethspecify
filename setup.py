@@ -1,9 +1,17 @@
+import pathlib
+
 from setuptools import setup, find_packages
+
+
+this_directory = pathlib.Path(__file__).parent
+long_description = (this_directory / "README.md").read_text(encoding="utf-8")
 
 setup(
     name="ethspecify",
     version="0.1.0",
     description="A utility for processing Ethereum specification tags.",
+    long_description=long_description,
+    long_description_content_type="text/markdown",
     author="Justin Traglia",
     author_email="jtraglia@pm.me",
     url="https://github.com/jtraglia/ethspecify",
