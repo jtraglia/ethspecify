@@ -32,7 +32,7 @@ jobs:
 
       - name: Build Pyspec Links JSON
         run: |
-          python3 links.py consensus-specs https://github.com/ethereum/consensus-specs/blob/dev --output links.json
+          python3 ./scripts/links.py consensus-specs https://github.com/ethereum/consensus-specs/blob/dev --output links.json
 
       - name: Commit and Push Changes
         run: |
