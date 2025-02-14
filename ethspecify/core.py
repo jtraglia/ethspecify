@@ -84,22 +84,23 @@ def diff(a_name, a_content, b_name, b_content):
 
 
 @functools.lru_cache()
-def get_links(version):
-    url = f"https://raw.githubusercontent.com/jtraglia/eth-spec-tags/main/pyspecs/{version}/links.json"
+def get_links():
+    url = f"https://raw.githubusercontent.com/jtraglia/ethspecify/main/links.json"
     response = requests.get(url)
     response.raise_for_status()
     return response.json()
 
 
 @functools.lru_cache()
-def get_pyspec(version):
-    url = f"https://raw.githubusercontent.com/jtraglia/eth-spec-tags/main/pyspecs/{version}/pyspec.json"
+def get_pyspec():
+    url = f"https://raw.githubusercontent.com/jtraglia/ethspecify/main/pyspec.json"
     response = requests.get(url)
     response.raise_for_status()
     return response.json()
 
 
-def get_previous_forks(pyspec, fork):
+def get_previous_forks(fork):
+    pyspec = get_pyspec()
     config_vars = pyspec["mainnet"][fork]["config_vars"]
     previous_forks = ["phase0"]
     for key in config_vars.keys():
@@ -111,7 +112,8 @@ def get_previous_forks(pyspec, fork):
     return list(reversed(previous_forks))
 
 
-def get_spec(pyspec, attributes, preset, fork):
+def get_spec(attributes, preset, fork):
+    pyspec = get_pyspec()
     spec = None
     if "function" in attributes or "fn" in attributes:
         if "function" in attributes and "fn" in attributes:
@@ -209,36 +211,30 @@ def parse_common_attributes(attributes):
         raise Exception(f"Missing fork attribute")
 
     try:
-        version = attributes["version"]
-    except KeyError:
-        version = "nightly"
-
-    try:
         style = attributes["style"]
     except KeyError:
         style = "hash"
 
-    return preset, fork, version, style
+    return preset, fork, style
 
 def get_spec_item(attributes):
-    preset, fork, version, style = parse_common_attributes(attributes)
-    pyspec = get_pyspec(version)
-    spec = get_spec(pyspec, attributes, preset, fork)
+    preset, fork, style = parse_common_attributes(attributes)
+    spec = get_spec(attributes, preset, fork)
 
     if style == "full" or style == "hash":
         return spec
     elif style == "diff":
-        previous_forks = get_previous_forks(pyspec, fork)
+        previous_forks = get_previous_forks(fork)
 
         previous_fork = None
         previous_spec = None
         for i, _ in enumerate(previous_forks):
             previous_fork = previous_forks[i]
-            previous_spec = get_spec(pyspec, attributes, preset, previous_fork)
+            previous_spec = get_spec(attributes, preset, previous_fork)
             if previous_spec != "phase0":
                 try:
                     previous_previous_fork = previous_forks[i+1]
-                    previous_previous_spec = get_spec(pyspec, attributes, preset, previous_previous_fork)
+                    previous_previous_spec = get_spec(attributes, preset, previous_previous_fork)
                     if previous_previous_spec == previous_spec:
                         continue
                 except KeyError:
@@ -258,8 +254,7 @@ def get_spec_item(attributes):
                 function_name = attributes["function"]
             else:
                 function_name = attributes["fn"]
-            links = get_links(version)
-            for key, value in links.items():
+            for key, value in get_links().items():
                 if fork in key and key.endswith(function_name):
                     return value
             return "Could not find link"
@@ -293,10 +288,9 @@ def replace_spec_tags(file_path):
         attributes = extract_attributes(opening_tag_full)
         print(f"spec tag: {attributes}")
 
-        # Parse common attributes to get style, version, etc.
-        preset, fork, version, style = parse_common_attributes(attributes)
-        pyspec = get_pyspec(version)
-        spec = get_spec(pyspec, attributes, preset, fork)
+        # Parse common attributes to get preset, fork, style, etc.
+        preset, fork, style = parse_common_attributes(attributes)
+        spec = get_spec(attributes, preset, fork)
 
         # Compute the first 8 characters of the SHA256 hash of the spec content.
         hash_value = hashlib.sha256(spec.encode('utf-8')).hexdigest()[:8]

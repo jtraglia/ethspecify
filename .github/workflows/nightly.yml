@@ -28,7 +28,7 @@ jobs:
         run: |
           cd consensus-specs
           make pyspec
-          cp pyspec.json ../pyspecs/nightly/pyspec.json
+          cp pyspec.json ../pyspec.json
 
       - name: Commit and Push Changes
         run: |
@@ -37,7 +37,7 @@ jobs:
 
           # Check if there are any changes
           if ! git diff --quiet; then
-            git add pyspecs/nightly/pyspec.json
+            git add pyspec.json
             git commit -m "Update nightly pyspec.json"
             git push
           else

@@ -58,12 +58,6 @@ spec tag: {'ssz_object': 'ConsolidationRequest', 'fork': 'electra'}
 
 ### Specification Options
 
-#### Version
-
-By default, the specification version will be "nightly" which is updated everyday at UTC midnight.
-If you wish to reference an item from a specific release, use the version attribute (_e.g._,
-`version="v1.5.0-alpha.10"`).
-
 #### Fork
 
 This attribute can be any of the [executable
