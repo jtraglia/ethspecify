@@ -278,58 +278,49 @@ def replace_spec_tags(file_path):
         re.DOTALL
     )
 
+    def rebuild_opening_tag(attributes, hash_value):
+        # Rebuild a fresh opening tag from attributes, overriding any existing hash.
+        new_opening = "<spec"
+        for key, val in attributes.items():
+            if key != "hash":
+                new_opening += f' {key}="{val}"'
+        new_opening += f' hash="{hash_value}">'
+        return new_opening
+
     def replacer(match):
+        # Always use the tag text from whichever group matched:
         if match.group("self") is not None:
-            # Process self-closing tag
-            tag_text = match.group("self")
-            attributes = extract_attributes(tag_text)
-            print(f"spec tag: {attributes}")
-            preset, fork, style = parse_common_attributes(attributes)
-            spec = get_spec(attributes, preset, fork)
-            hash_value = hashlib.sha256(spec.encode('utf-8')).hexdigest()[:8]
-            if 'hash="' in tag_text:
+            original_tag_text = match.group("self")
+        else:
+            original_tag_text = match.group("long")
+
+        attributes = extract_attributes(original_tag_text)
+        print(f"spec tag: {attributes}")
+        preset, fork, style = parse_common_attributes(attributes)
+        spec = get_spec(attributes, preset, fork)
+        hash_value = hashlib.sha256(spec.encode('utf-8')).hexdigest()[:8]
+
+        if style == "hash":
+            # For hash style, output a self-closing tag.
+            if 'hash="' in original_tag_text:
                 updated_tag = re.sub(
                     r'(hash=")[^"]*(")',
                     lambda m: f'{m.group(1)}{hash_value}{m.group(2)}',
-                    tag_text
+                    original_tag_text
                 )
             else:
-                # Insert hash attribute before the trailing '/>'
-                updated_tag = tag_text[:-2] + f' hash="{hash_value}"' + tag_text[-2:]
+                updated_tag = re.sub(r'\s*/>$', f' hash="{hash_value}" />', original_tag_text)
             return updated_tag
         else:
-            # Process long (paired) tag
-            tag_text = match.group("long")
-            # Extract the opening tag from the long tag (everything up to the first '>')
-            opening_match = re.match(r'(<spec\b[^>]*>)([\s\S]*)(</spec>)', tag_text, re.DOTALL)
-            if not opening_match:
-                return tag_text
-            opening_tag_full = opening_match.group(1)
-            attributes = extract_attributes(opening_tag_full)
-            print(f"spec tag: {attributes}")
-            preset, fork, style = parse_common_attributes(attributes)
-            spec = get_spec(attributes, preset, fork)
-            hash_value = hashlib.sha256(spec.encode('utf-8')).hexdigest()[:8]
-            if 'hash="' in opening_tag_full:
-                updated_opening = re.sub(
-                    r'(hash=")[^"]*(")',
-                    lambda m: f'{m.group(1)}{hash_value}{m.group(2)}',
-                    opening_tag_full
-                )
-            else:
-                updated_opening = opening_tag_full[:-1] + f' hash="{hash_value}">'
-            if style == "hash":
-                updated_tag = re.sub(r'\s*</spec>\s*$', '', updated_opening)
-                updated_tag = re.sub(r'\s*>$', '', updated_tag) + " />"
-            else:
-                spec_content = get_spec_item(attributes)
-                prefix = content[:match.start()].splitlines()[-1]
-                prefixed_spec = "\n".join(
-                    f"{prefix}{line}" if line.rstrip() else prefix.rstrip()
-                    for line in spec_content.rstrip().split("\n")
-                )
-                long_opening = updated_opening.rstrip(">/") + ">"
-                updated_tag = f"{long_opening}\n{prefixed_spec}\n{prefix}</spec>"
+            # For full/diff styles, always rebuild as a long (paired) tag.
+            new_opening = rebuild_opening_tag(attributes, hash_value)
+            spec_content = get_spec_item(attributes)
+            prefix = content[:match.start()].splitlines()[-1]
+            prefixed_spec = "\n".join(
+                f"{prefix}{line}" if line.rstrip() else prefix.rstrip()
+                for line in spec_content.rstrip().split("\n")
+            )
+            updated_tag = f"{new_opening}\n{prefixed_spec}\n{prefix}</spec>"
             return updated_tag
 
 

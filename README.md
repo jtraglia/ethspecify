@@ -21,13 +21,13 @@ In your client, add HTML tags like this:
 
 ```
 /*
- * <spec fn="is_fully_withdrawable_validator" fork="deneb">
+ * <spec fn="is_fully_withdrawable_validator" fork="deneb" />
  */
 ```
 
 ```
 /*
- * <spec ssz_object="BeaconState" fork="electra" style="diff">
+ * <spec ssz_object="BeaconState" fork="electra" style="diff" />
  */
 ```
 
