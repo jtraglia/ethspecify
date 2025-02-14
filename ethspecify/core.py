@@ -287,12 +287,28 @@ def replace_spec_tags(file_path):
         new_opening += f' hash="{hash_value}">'
         return new_opening
 
+    def rebuild_self_closing_tag(attributes, hash_value):
+        # Build a self-closing tag from attributes, forcing a single space before the slash.
+        new_tag = "<spec"
+        for key, val in attributes.items():
+            if key != "hash":
+                new_tag += f' {key}="{val}"'
+        new_tag += f' hash="{hash_value}" />'
+        return new_tag
+
     def replacer(match):
         # Always use the tag text from whichever group matched:
         if match.group("self") is not None:
             original_tag_text = match.group("self")
         else:
             original_tag_text = match.group("long")
+        # Determine the original opening tag (ignore inner content)
+        if match.group("self") is not None:
+            original_tag_text = match.group("self")
+        else:
+            long_tag_text = match.group("long")
+            opening_tag_match = re.search(r'<spec\b[^>]*>', long_tag_text)
+            original_tag_text = opening_tag_match.group(0) if opening_tag_match else long_tag_text
 
         attributes = extract_attributes(original_tag_text)
         print(f"spec tag: {attributes}")
@@ -301,18 +317,11 @@ def replace_spec_tags(file_path):
         hash_value = hashlib.sha256(spec.encode('utf-8')).hexdigest()[:8]
 
         if style == "hash":
-            # For hash style, output a self-closing tag.
-            if 'hash="' in original_tag_text:
-                updated_tag = re.sub(
-                    r'(hash=")[^"]*(")',
-                    lambda m: f'{m.group(1)}{hash_value}{m.group(2)}',
-                    original_tag_text
-                )
-            else:
-                updated_tag = re.sub(r'\s*/>$', f' hash="{hash_value}" />', original_tag_text)
+            # Rebuild a fresh self-closing tag.
+            updated_tag = rebuild_self_closing_tag(attributes, hash_value)
             return updated_tag
         else:
-            # For full/diff styles, always rebuild as a long (paired) tag.
+            # For full/diff styles, rebuild as a long (paired) tag.
             new_opening = rebuild_opening_tag(attributes, hash_value)
             spec_content = get_spec_item(attributes)
             prefix = content[:match.start()].splitlines()[-1]
