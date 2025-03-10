@@ -1,18 +1,20 @@
 diff --git a/setup.py b/setup.py
-index 8bfcbed22..f8c58cf05 100644
+index 08ab87b87..9c25249b5 100644
 --- a/setup.py
 +++ b/setup.py
-@@ -357,6 +357,7 @@ def load_config(config_path: Path) -> Dict[str, str]:
-     config_data = yaml.load(config_path)
-     return parse_config_vars(config_data)
+@@ -379,6 +379,9 @@ def load_preset(preset_files: Sequence[Path]) -> Dict[str, str]:
+     return parse_config_vars(preset)
+ 
  
 +pyspec = {}
- 
- def build_spec(fork: str,
-                preset_name: str,
-@@ -379,6 +380,13 @@ def build_spec(fork: str,
-         new_objects = copy.deepcopy(class_objects)
-         dependency_order_class_objects(class_objects, spec_object.custom_types)
++
++
+ @lru_cache(maxsize=None)
+ def load_config(config_path: Path) -> Dict[str, str]:
+     """
+@@ -413,6 +416,13 @@ def build_spec(fork: str,
+             spec_object.custom_types | spec_object.preset_dep_custom_types,
+         )
  
 +    if preset_name not in pyspec:
 +        pyspec[preset_name] = {}
@@ -24,12 +26,13 @@ index 8bfcbed22..f8c58cf05 100644
      return objects_to_spec(preset_name, spec_object, fork, class_objects)
  
  
-@@ -470,6 +478,8 @@ class PySpecCommand(Command):
+@@ -504,6 +514,9 @@ class PySpecCommand(Command):
                  # `mainnet` is the default spec.
                  out.write("from . import mainnet as spec  # noqa:F401\n")
  
 +        with open("pyspec.json", "w") as file:
 +            json.dump(pyspec, file)
++
  
  class BuildPyCommand(build_py):
      """Customize the build command to run the spec-builder on setup.py build"""
