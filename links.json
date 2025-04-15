@@ -928,7 +928,6 @@
   "specs/phase0/fork-choice.md::#helpers": "https://github.com/ethereum/consensus-specs/blob/dev/specs/phase0/fork-choice.md#helpers",
   "specs/phase0/fork-choice.md::#latestmessage": "https://github.com/ethereum/consensus-specs/blob/dev/specs/phase0/fork-choice.md#latestmessage",
   "specs/phase0/fork-choice.md::#store": "https://github.com/ethereum/consensus-specs/blob/dev/specs/phase0/fork-choice.md#store",
-  "specs/phase0/fork-choice.md::#is_previous_epoch_justified": "https://github.com/ethereum/consensus-specs/blob/dev/specs/phase0/fork-choice.md#is_previous_epoch_justified",
   "specs/phase0/fork-choice.md::#get_forkchoice_store": "https://github.com/ethereum/consensus-specs/blob/dev/specs/phase0/fork-choice.md#get_forkchoice_store",
   "specs/phase0/fork-choice.md::#get_slots_since_genesis": "https://github.com/ethereum/consensus-specs/blob/dev/specs/phase0/fork-choice.md#get_slots_since_genesis",
   "specs/phase0/fork-choice.md::#get_current_slot": "https://github.com/ethereum/consensus-specs/blob/dev/specs/phase0/fork-choice.md#get_current_slot",
