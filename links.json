@@ -38,6 +38,7 @@
   "tests/generators/README.md::#cleaning": "https://github.com/ethereum/consensus-specs/blob/dev/tests/generators/README.md#cleaning",
   "tests/generators/README.md::#running-all-test-generators": "https://github.com/ethereum/consensus-specs/blob/dev/tests/generators/README.md#running-all-test-generators",
   "tests/generators/README.md::#running-a-single-generator": "https://github.com/ethereum/consensus-specs/blob/dev/tests/generators/README.md#running-a-single-generator",
+  "tests/generators/README.md::#running-generators-for-specific-tests": "https://github.com/ethereum/consensus-specs/blob/dev/tests/generators/README.md#running-generators-for-specific-tests",
   "tests/generators/README.md::#developing-a-generator": "https://github.com/ethereum/consensus-specs/blob/dev/tests/generators/README.md#developing-a-generator",
   "tests/generators/README.md::#how-to-add-a-new-test-generator": "https://github.com/ethereum/consensus-specs/blob/dev/tests/generators/README.md#how-to-add-a-new-test-generator",
   "tests/generators/README.md::#how-to-remove-a-test-generator": "https://github.com/ethereum/consensus-specs/blob/dev/tests/generators/README.md#how-to-remove-a-test-generator",
