@@ -1462,6 +1462,7 @@
   "specs/_features/eip7805/fork-choice.md::#fork-choice": "https://github.com/ethereum/consensus-specs/blob/dev/specs/_features/eip7805/fork-choice.md#fork-choice",
   "specs/_features/eip7805/fork-choice.md::#helpers": "https://github.com/ethereum/consensus-specs/blob/dev/specs/_features/eip7805/fork-choice.md#helpers",
   "specs/_features/eip7805/fork-choice.md::#modified-store": "https://github.com/ethereum/consensus-specs/blob/dev/specs/_features/eip7805/fork-choice.md#modified-store",
+  "specs/_features/eip7805/fork-choice.md::#modified-get_forkchoice_store": "https://github.com/ethereum/consensus-specs/blob/dev/specs/_features/eip7805/fork-choice.md#modified-get_forkchoice_store",
   "specs/_features/eip7805/fork-choice.md::#new-validate_inclusion_lists": "https://github.com/ethereum/consensus-specs/blob/dev/specs/_features/eip7805/fork-choice.md#new-validate_inclusion_lists",
   "specs/_features/eip7805/fork-choice.md::#new-get_attester_head": "https://github.com/ethereum/consensus-specs/blob/dev/specs/_features/eip7805/fork-choice.md#new-get_attester_head",
   "specs/_features/eip7805/fork-choice.md::#modified-get_proposer_head": "https://github.com/ethereum/consensus-specs/blob/dev/specs/_features/eip7805/fork-choice.md#modified-get_proposer_head",
