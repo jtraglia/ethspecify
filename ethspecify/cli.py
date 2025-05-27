@@ -123,6 +123,18 @@ def list_forks(args):
     return 0
 
 
+def get_latest_fork():
+    """A helper function to get the latest non-eip fork."""
+    pyspec = get_pyspec()
+    forks = sorted(
+        pyspec["mainnet"].keys(),
+        key=lambda x: (x != "phase0", x.startswith("eip"), x)
+    )
+    for fork in reversed(forks):
+        if not fork.startswith("eip"):
+            return fork
+
+
 def main():
     parser = argparse.ArgumentParser(
         description="Process files containing <spec> tags."
@@ -154,7 +166,7 @@ def main():
         "--fork",
         type=str,
         help="Fork to list tags for",
-        default="deneb",
+        default=get_latest_fork(),
     )
     list_parser.add_argument(
         "--preset",
