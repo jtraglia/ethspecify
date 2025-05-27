@@ -197,6 +197,16 @@ def get_spec(attributes, preset, fork):
         raise Exception("invalid spec tag")
     return spec
 
+def get_latest_fork():
+    """A helper function to get the latest non-eip fork."""
+    pyspec = get_pyspec()
+    forks = sorted(
+        pyspec["mainnet"].keys(),
+        key=lambda x: (x != "phase0", x.startswith("eip"), x)
+    )
+    for fork in reversed(forks):
+        if not fork.startswith("eip"):
+            return fork
 
 def parse_common_attributes(attributes):
     try:
@@ -207,7 +217,7 @@ def parse_common_attributes(attributes):
     try:
         fork = attributes["fork"]
     except KeyError:
-        raise Exception(f"Missing fork attribute")
+        fork = get_latest_fork()
 
     try:
         style = attributes["style"]

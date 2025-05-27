@@ -2,7 +2,7 @@ import argparse
 import os
 import sys
 
-from .core import grep, replace_spec_tags, get_pyspec
+from .core import grep, replace_spec_tags, get_pyspec, get_latest_fork
 
 
 def process(args):
@@ -53,41 +53,42 @@ def list_tags(args):
     else:
         # Plain text output
         print(f"Available tags for {fork} fork ({preset} preset):")
+        maybe_fork = f' fork="{fork}"' if fork != get_latest_fork() else ""
 
         print("\nFunctions:")
         for fn_name in sorted(pyspec[preset][fork]['functions'].keys()):
             if args.search is None or args.search.lower() in fn_name.lower():
-                print(f"  <spec fn=\"{fn_name}\" fork=\"{fork}\" />")
+                print(f"  <spec fn=\"{fn_name}\"{maybe_fork} />")
 
         print("\nConstants:")
         for const_name in sorted(pyspec[preset][fork]['constant_vars'].keys()):
             if args.search is None or args.search.lower() in const_name.lower():
-                print(f"  <spec constant_var=\"{const_name}\" fork=\"{fork}\" />")
+                print(f"  <spec constant_var=\"{const_name}\"{maybe_fork} />")
 
         print("\nCustom Types:")
         for type_name in sorted(pyspec[preset][fork]['custom_types'].keys()):
             if args.search is None or args.search.lower() in type_name.lower():
-                print(f"  <spec custom_type=\"{type_name}\" fork=\"{fork}\" />")
+                print(f"  <spec custom_type=\"{type_name}\"{maybe_fork} />")
 
         print("\nSSZ Objects:")
         for obj_name in sorted(pyspec[preset][fork]['ssz_objects'].keys()):
             if args.search is None or args.search.lower() in obj_name.lower():
-                print(f"  <spec ssz_object=\"{obj_name}\" fork=\"{fork}\" />")
+                print(f"  <spec ssz_object=\"{obj_name}\"{maybe_fork} />")
 
         print("\nDataclasses:")
         for class_name in sorted(pyspec[preset][fork]['dataclasses'].keys()):
             if args.search is None or args.search.lower() in class_name.lower():
-                print(f"  <spec dataclass=\"{class_name}\" fork=\"{fork}\" />")
+                print(f"  <spec dataclass=\"{class_name}\"{maybe_fork} />")
 
         print("\nPreset Variables:")
         for var_name in sorted(pyspec[preset][fork]['preset_vars'].keys()):
             if args.search is None or args.search.lower() in var_name.lower():
-                print(f"  <spec preset_var=\"{var_name}\" fork=\"{fork}\" />")
+                print(f"  <spec preset_var=\"{var_name}\"{maybe_fork} />")
 
         print("\nConfig Variables:")
         for var_name in sorted(pyspec[preset][fork]['config_vars'].keys()):
             if args.search is None or args.search.lower() in var_name.lower():
-                print(f"  <spec config_var=\"{var_name}\" fork=\"{fork}\" />")
+                print(f"  <spec config_var=\"{var_name}\"{maybe_fork} />")
 
     return 0
 
@@ -121,18 +122,6 @@ def list_forks(args):
             print(f"  {fork}")
 
     return 0
-
-
-def get_latest_fork():
-    """A helper function to get the latest non-eip fork."""
-    pyspec = get_pyspec()
-    forks = sorted(
-        pyspec["mainnet"].keys(),
-        key=lambda x: (x != "phase0", x.startswith("eip"), x)
-    )
-    for fork in reversed(forks):
-        if not fork.startswith("eip"):
-            return fork
 
 
 def main():
