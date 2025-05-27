@@ -1,7 +1,22 @@
 import argparse
 import os
+import sys
 
 from .core import grep, replace_spec_tags, get_pyspec
+
+
+def process(args):
+    """Process all spec tags."""
+    project_dir = os.path.abspath(os.path.expanduser(args.path))
+    if not os.path.isdir(project_dir):
+        print(f"Error: The directory {repr(project_dir)} does not exist.")
+        return 1
+
+    for f in grep(project_dir, r"<spec\b.*?>", args.exclude):
+        print(f"Processing file: {f}")
+        replace_spec_tags(f)
+
+    return 0
 
 
 def list_tags(args):
@@ -116,8 +131,9 @@ def main():
     # Create subparsers for different commands
     subparsers = parser.add_subparsers(dest="command", help="Command to execute")
 
-    # Parser for the default 'process' command (original functionality)
+    # Parser for 'process' command
     process_parser = subparsers.add_parser("process", help="Process spec tags in files")
+    process_parser.set_defaults(func=process)
     process_parser.add_argument(
         "--path",
         type=str,
@@ -131,8 +147,9 @@ def main():
         default=[],
     )
 
-    # Parser for the new 'list-tags' command
+    # Parser for 'list-tags' command
     list_parser = subparsers.add_parser("list-tags", help="List available specification tags")
+    list_parser.set_defaults(func=list_tags)
     list_parser.add_argument(
         "--fork",
         type=str,
@@ -159,8 +176,9 @@ def main():
         default=None,
     )
 
-    # Parser for the 'list-forks' command
+    # Parser for 'list-forks' command
     list_forks_parser = subparsers.add_parser("list-forks", help="List available forks")
+    list_forks_parser.set_defaults(func=list_forks)
     list_forks_parser.add_argument(
         "--preset",
         type=str,
@@ -175,43 +193,13 @@ def main():
         help="Output format (text or json)",
     )
 
-    # For backward compatibility, add the original arguments at the top level too
-    parser.add_argument(
-        "--path",
-        type=str,
-        help="Directory to search for files containing <spec> tags",
-        default=".",
-    )
-    parser.add_argument(
-        "--exclude",
-        action="append",
-        help="Exclude paths matching this regex",
-        default=[],
-    )
+    # Default to 'process' if no args are provided
+    if len(sys.argv) == 1:
+        sys.argv.insert(1, "process")
 
     args = parser.parse_args()
+    exit(args.func(args))
 
-    # For backward compatibility, default to 'process' if no command is specified
-    if args.command is None:
-        args.command = "process"
-
-    # Execute the appropriate command
-    if args.command == "process":
-        # Original functionality
-        project_dir = os.path.abspath(os.path.expanduser(args.path))
-        if not os.path.isdir(project_dir):
-            print(f"Error: The directory '{project_dir}' does not exist.")
-            exit(1)
-
-        for f in grep(project_dir, r"<spec\b.*?>", args.exclude):
-            print(f"Processing file: {f}")
-            replace_spec_tags(f)
-    elif args.command == "list-tags":
-        # New functionality to list tags
-        exit(list_tags(args))
-    elif args.command == "list-forks":
-        # New functionality to list forks
-        exit(list_forks(args))
 
 if __name__ == "__main__":
     main()
