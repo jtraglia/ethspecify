@@ -1,4 +1,5 @@
 import argparse
+import json
 import os
 import sys
 
@@ -35,7 +36,6 @@ def list_tags(args):
 
     # Format output based on requested format
     if args.format == "json":
-        import json
         result = {
             "fork": fork,
             "preset": preset,
@@ -110,7 +110,6 @@ def list_forks(args):
     )
 
     if args.format == "json":
-        import json
         result = {
             "preset": preset,
             "forks": forks
