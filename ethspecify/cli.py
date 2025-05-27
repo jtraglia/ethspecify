@@ -160,28 +160,28 @@ def main():
     )
 
     # Parser for 'list-tags' command
-    list_parser = subparsers.add_parser("list-tags", help="List available specification tags")
-    list_parser.set_defaults(func=list_tags)
-    list_parser.add_argument(
+    list_tags_parser = subparsers.add_parser("list-tags", help="List available specification tags")
+    list_tags_parser.set_defaults(func=list_tags)
+    list_tags_parser.add_argument(
         "--fork",
         type=str,
         help="Fork to list tags for",
         default=get_latest_fork(),
     )
-    list_parser.add_argument(
+    list_tags_parser.add_argument(
         "--preset",
         type=str,
         help="Preset to use (mainnet or minimal)",
         default="mainnet",
     )
-    list_parser.add_argument(
+    list_tags_parser.add_argument(
         "--format",
         type=str,
         choices=["text", "json"],
         default="text",
         help="Output format (text or json)",
     )
-    list_parser.add_argument(
+    list_tags_parser.add_argument(
         "--search",
         type=str,
         help="Filter tags by search term",
