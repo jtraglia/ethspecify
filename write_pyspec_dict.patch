@@ -1,18 +1,16 @@
 diff --git a/setup.py b/setup.py
-index 08ab87b87..9c25249b5 100644
+index 2f52ccdde..7ee5f84d3 100644
 --- a/setup.py
 +++ b/setup.py
-@@ -379,6 +379,9 @@ def load_preset(preset_files: Sequence[Path]) -> Dict[str, str]:
-     return parse_config_vars(preset)
- 
+@@ -85,6 +85,7 @@ def load_config(config_path: Path) -> Dict[str, str | List[Dict[str, str]]]:
+     config_data = yaml.load(config_path)
+     return parse_config_vars(config_data)
  
 +pyspec = {}
-+
-+
- @lru_cache(maxsize=None)
- def load_config(config_path: Path) -> Dict[str, str]:
-     """
-@@ -413,6 +416,13 @@ def build_spec(fork: str,
+ 
+ def build_spec(fork: str,
+                preset_name: str,
+@@ -110,6 +111,13 @@ def build_spec(fork: str,
              spec_object.custom_types | spec_object.preset_dep_custom_types,
          )
  
@@ -26,11 +24,12 @@ index 08ab87b87..9c25249b5 100644
      return objects_to_spec(preset_name, spec_object, fork, class_objects)
  
  
-@@ -504,6 +514,9 @@ class PySpecCommand(Command):
+@@ -201,6 +209,10 @@ class PySpecCommand(Command):
                  # `mainnet` is the default spec.
                  out.write("from . import mainnet as spec  # noqa:F401\n")
  
 +        with open("pyspec.json", "w") as file:
++            import json
 +            json.dump(pyspec, file)
 +
  
