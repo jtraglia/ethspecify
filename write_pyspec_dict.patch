@@ -1,8 +1,8 @@
 diff --git a/setup.py b/setup.py
-index 4708b2a81..9e3e06ada 100644
+index 76a16e261..3194b692f 100644
 --- a/setup.py
 +++ b/setup.py
-@@ -87,6 +87,9 @@ def load_config(config_path: Path) -> Dict[str, str | List[Dict[str, str]]]:
+@@ -83,6 +83,9 @@ def load_config(config_path: Path) -> dict[str, str | list[dict[str, str]]]:
      return parse_config_vars(config_data)
  
  
@@ -12,7 +12,7 @@ index 4708b2a81..9e3e06ada 100644
  def build_spec(
      fork: str,
      preset_name: str,
-@@ -113,6 +116,13 @@ def build_spec(
+@@ -109,6 +112,13 @@ def build_spec(
              spec_object.custom_types | spec_object.preset_dep_custom_types,
          )
  
@@ -26,7 +26,7 @@ index 4708b2a81..9e3e06ada 100644
      return objects_to_spec(preset_name, spec_object, fork, class_objects)
  
  
-@@ -215,6 +225,11 @@ class PySpecCommand(Command):
+@@ -210,6 +220,11 @@ class PySpecCommand(Command):
                  # `mainnet` is the default spec.
                  out.write("from . import mainnet as spec  # noqa:F401\n")
  
