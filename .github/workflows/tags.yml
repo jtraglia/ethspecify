@@ -2,7 +2,7 @@ name: Tag Update
 
 on:
   schedule:
-    - cron: "0 */1 * * *" # Check for new tags every 6 hours
+    - cron: "0 0 * * *" # Runs nightly at midnight UTC
   workflow_dispatch: # Allow manual runs
 
 jobs:
