@@ -1,0 +1,106 @@
+name: Tag Update
+
+on:
+  schedule:
+    - cron: "0 */1 * * *" # Check for new tags every 6 hours
+  workflow_dispatch: # Allow manual runs
+
+jobs:
+  check-and-process-tags:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Current Repository
+        uses: actions/checkout@v3
+        with:
+          ref: main
+
+      - name: Clone Consensus Specs
+        run: |
+          git clone https://github.com/ethereum/consensus-specs.git
+
+      - name: Get All Tags
+        id: get-tags
+        run: |
+          cd consensus-specs
+          git fetch --tags
+          # Get all tags sorted by version
+          TAGS=$(git tag -l | sort -V)
+          echo "tags<<EOF" >> $GITHUB_OUTPUT
+          echo "$TAGS" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: Check Processed Tags
+        id: check-processed
+        run: |
+          # Create pyspec/tags directory if it doesn't exist
+          mkdir -p pyspec/tags
+
+          # Get list of already processed tags
+          PROCESSED_TAGS=$(ls pyspec/tags/ 2>/dev/null || echo "")
+          echo "processed<<EOF" >> $GITHUB_OUTPUT
+          echo "$PROCESSED_TAGS" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: Process New Tags
+        run: |
+          cd consensus-specs
+
+          # Convert multiline strings to arrays
+          readarray -t ALL_TAGS <<< "${{ steps.get-tags.outputs.tags }}"
+          readarray -t PROCESSED <<< "${{ steps.check-processed.outputs.processed }}"
+
+          # Process each tag
+          for tag in "${ALL_TAGS[@]}"; do
+            if [[ -z "$tag" ]]; then continue; fi
+
+            # Skip tags before v1.6.0-alpha.2
+            # Use sort -V to properly compare semantic versions
+            MIN_VERSION="v1.6.0-alpha.2"
+            if [[ $(printf '%s\n%s' "$MIN_VERSION" "$tag" | sort -V | head -n1) != "$MIN_VERSION" ]]; then
+              echo "Skipping old tag: $tag (before v1.6.0-alpha.2)"
+              continue
+            fi
+
+            # Check if tag was already processed
+            if [[ " ${PROCESSED[@]} " =~ " ${tag} " ]]; then
+              echo "Tag $tag already processed, skipping..."
+              continue
+            fi
+
+            echo "Processing new tag: $tag"
+
+            # Checkout the tag
+            git checkout "$tag"
+
+            # Apply patch
+            git apply ../write_pyspec_dict.patch
+
+            # Build pyspec
+            make pyspec
+
+            # Create tag directory and copy files
+            mkdir -p "../pyspec/tags/$tag"
+            cp pyspec.json "../pyspec/tags/$tag/"
+
+            # Build links for this tag
+            cd ..
+            python3 ./scripts/links.py consensus-specs "https://github.com/ethereum/consensus-specs/blob/$tag" --output "pyspec/tags/$tag/links.json"
+            cd consensus-specs
+          done
+
+      - name: Commit and Push Changes
+        run: |
+          git config --global user.name "GitHub Actions"
+          git config --global user.email "actions@github.com"
+
+          # Check if there are any changes
+          if ! git diff --quiet || [ -n "$(git ls-files --others --exclude-standard)" ]; then
+            git add pyspec/tags/
+            git commit -m "Add consensus-specs tagged versions"
+            git push
+          else
+            echo "No new tags detected. Skipping commit."
+          fi
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
