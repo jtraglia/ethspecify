@@ -33,11 +33,11 @@ jobs:
       - name: Check Processed Tags
         id: check-processed
         run: |
-          # Create pyspec/tags directory if it doesn't exist
-          mkdir -p pyspec/tags
+          # Create pyspec directory if it doesn't exist
+          mkdir -p pyspec
 
           # Get list of already processed tags
-          PROCESSED_TAGS=$(ls pyspec/tags/ 2>/dev/null || echo "")
+          PROCESSED_TAGS=$(ls pyspec/ 2>/dev/null || echo "")
           echo "processed<<EOF" >> $GITHUB_OUTPUT
           echo "$PROCESSED_TAGS" >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
@@ -84,12 +84,12 @@ jobs:
             make pyspec
 
             # Create tag directory and copy files
-            mkdir -p "../pyspec/tags/$tag"
-            cp pyspec.json "../pyspec/tags/$tag/"
+            mkdir -p "../pyspec/$tag"
+            cp pyspec.json "../pyspec/$tag/"
 
             # Build links for this tag
             cd ..
-            python3 ./scripts/links.py consensus-specs "https://github.com/ethereum/consensus-specs/blob/$tag" --output "pyspec/tags/$tag/links.json"
+            python3 ./scripts/links.py consensus-specs "https://github.com/ethereum/consensus-specs/blob/$tag" --output "pyspec/$tag/links.json"
             cd consensus-specs
           done
 
@@ -100,7 +100,7 @@ jobs:
 
           # Check if there are any changes
           if ! git diff --quiet || [ -n "$(git ls-files --others --exclude-standard)" ]; then
-            git add pyspec/tags/
+            git add pyspec/
             git commit -m "Add consensus-specs tagged versions"
             git push
           else
