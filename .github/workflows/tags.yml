@@ -70,6 +70,10 @@ jobs:
 
             echo "Processing new tag: $tag"
 
+            # Clean up any modifications from previous tag
+            git reset --hard
+            git clean -fd
+
             # Checkout the tag
             git checkout "$tag"
 
