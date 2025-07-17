@@ -83,23 +83,23 @@ def diff(a_name, a_content, b_name, b_content):
 
 
 @functools.lru_cache()
-def get_links():
-    url = f"https://raw.githubusercontent.com/jtraglia/ethspecify/main/links.json"
+def get_links(version="nightly"):
+    url = f"https://raw.githubusercontent.com/jtraglia/ethspecify/main/pyspec/{version}/links.json"
     response = requests.get(url)
     response.raise_for_status()
     return response.json()
 
 
 @functools.lru_cache()
-def get_pyspec():
-    url = f"https://raw.githubusercontent.com/jtraglia/ethspecify/main/pyspec.json"
+def get_pyspec(version="nightly"):
+    url = f"https://raw.githubusercontent.com/jtraglia/ethspecify/main/pyspec/{version}/pyspec.json"
     response = requests.get(url)
     response.raise_for_status()
     return response.json()
 
 
-def get_previous_forks(fork):
-    pyspec = get_pyspec()
+def get_previous_forks(fork, version="nightly"):
+    pyspec = get_pyspec(version)
     config_vars = pyspec["mainnet"][fork]["config_vars"]
     previous_forks = ["phase0"]
     for key in config_vars.keys():
@@ -111,8 +111,8 @@ def get_previous_forks(fork):
     return list(reversed(previous_forks))
 
 
-def get_spec(attributes, preset, fork):
-    pyspec = get_pyspec()
+def get_spec(attributes, preset, fork, version="nightly"):
+    pyspec = get_pyspec(version)
     spec = None
     if "function" in attributes or "fn" in attributes:
         if "function" in attributes and "fn" in attributes:
@@ -197,9 +197,9 @@ def get_spec(attributes, preset, fork):
         raise Exception("invalid spec tag")
     return spec
 
-def get_latest_fork():
+def get_latest_fork(version="nightly"):
     """A helper function to get the latest non-eip fork."""
-    pyspec = get_pyspec()
+    pyspec = get_pyspec(version)
     forks = sorted(
         pyspec["mainnet"].keys(),
         key=lambda x: (x != "phase0", x.startswith("eip"), x)
@@ -215,35 +215,40 @@ def parse_common_attributes(attributes):
         preset = "mainnet"
 
     try:
+        version = attributes["version"]
+    except KeyError:
+        version = "nightly"
+
+    try:
         fork = attributes["fork"]
     except KeyError:
-        fork = get_latest_fork()
+        fork = get_latest_fork(version)
 
     try:
         style = attributes["style"]
     except KeyError:
         style = "hash"
 
-    return preset, fork, style
+    return preset, fork, style, version
 
 def get_spec_item(attributes):
-    preset, fork, style = parse_common_attributes(attributes)
-    spec = get_spec(attributes, preset, fork)
+    preset, fork, style, version = parse_common_attributes(attributes)
+    spec = get_spec(attributes, preset, fork, version)
 
     if style == "full" or style == "hash":
         return spec
     elif style == "diff":
-        previous_forks = get_previous_forks(fork)
+        previous_forks = get_previous_forks(fork, version)
 
         previous_fork = None
         previous_spec = None
         for i, _ in enumerate(previous_forks):
             previous_fork = previous_forks[i]
-            previous_spec = get_spec(attributes, preset, previous_fork)
+            previous_spec = get_spec(attributes, preset, previous_fork, version)
             if previous_spec != "phase0":
                 try:
                     previous_previous_fork = previous_forks[i+1]
-                    previous_previous_spec = get_spec(attributes, preset, previous_previous_fork)
+                    previous_previous_spec = get_spec(attributes, preset, previous_previous_fork, version)
                     if previous_previous_spec == previous_spec:
                         continue
                 except KeyError:
@@ -263,7 +268,7 @@ def get_spec_item(attributes):
                 function_name = attributes["function"]
             else:
                 function_name = attributes["fn"]
-            for key, value in get_links().items():
+            for key, value in get_links(version).items():
                 if fork in key and key.endswith(function_name):
                     return value
             return "Could not find link"
@@ -322,8 +327,8 @@ def replace_spec_tags(file_path):
 
         attributes = extract_attributes(original_tag_text)
         print(f"spec tag: {attributes}")
-        preset, fork, style = parse_common_attributes(attributes)
-        spec = get_spec(attributes, preset, fork)
+        preset, fork, style, version = parse_common_attributes(attributes)
+        spec = get_spec(attributes, preset, fork, version)
         hash_value = hashlib.sha256(spec.encode('utf-8')).hexdigest()[:8]
 
         if style == "hash":

@@ -41,6 +41,20 @@ ethspecify
 
 ## Specification Options
 
+### Version
+
+This attribute specifies which version of the consensus specifications to use. Default is `nightly`.
+
+- `nightly` (default) - Uses the latest nightly build from the master branch
+- `v1.6.0-alpha.2`, `v1.6.0-alpha.3`, etc. - Uses a specific tagged release version
+
+Example:
+```
+/*
+ * <spec fn="apply_deposit" fork="electra" version="v1.6.0-alpha.3" />
+ */
+```
+
 ### Fork
 
 This attribute can be any of the [executable

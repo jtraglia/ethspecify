@@ -21,7 +21,8 @@ jobs:
 
       - name: Build Pyspec Links JSON
         run: |
-          python3 ./scripts/links.py consensus-specs https://github.com/ethereum/consensus-specs/blob/master --output links.json
+          mkdir -p pyspec/nightly
+          python3 ./scripts/links.py consensus-specs https://github.com/ethereum/consensus-specs/blob/master --output pyspec/nightly/links.json
 
       - name: Apply Patch to Consensus Specs
         run: |
@@ -32,7 +33,7 @@ jobs:
         run: |
           cd consensus-specs
           make pyspec
-          cp pyspec.json ../pyspec.json
+          cp pyspec.json ../pyspec/nightly/pyspec.json
 
       - name: Commit and Push Changes
         run: |
