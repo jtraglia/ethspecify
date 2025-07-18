@@ -98,6 +98,9 @@ jobs:
           git config --global user.name "GitHub Actions"
           git config --global user.email "actions@github.com"
 
+          # Remove the cloned consensus-specs directory
+          rm -rf consensus-specs/
+
           # Check if there are any changes
           if ! git diff --quiet || [ -n "$(git ls-files --others --exclude-standard)" ]; then
             git add pyspec/
