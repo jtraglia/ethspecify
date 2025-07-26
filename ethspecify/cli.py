@@ -3,7 +3,7 @@ import json
 import os
 import sys
 
-from .core import grep, replace_spec_tags, get_pyspec, get_latest_fork
+from .core import grep, replace_spec_tags, get_pyspec, get_latest_fork, get_spec_item_history
 
 
 def process(args):
@@ -21,76 +21,51 @@ def process(args):
 
 
 def list_tags(args):
-    """List all available tags for a specific fork and preset."""
-    # Get the specification data
-    pyspec = get_pyspec()
-    fork = args.fork
-    preset = args.preset
+    """List all available tags with their fork history."""
+    preset = getattr(args, 'preset', 'mainnet')
+    return _list_tags_with_history(args, preset)
 
-    # Validate that the fork exists
-    if fork not in pyspec[preset]:
-        print(f"Error: Fork '{fork}' not found in {preset} preset")
-        available_forks = list(pyspec[preset].keys())
-        print(f"Available forks: {', '.join(available_forks)}")
+
+def _list_tags_with_history(args, preset):
+    """List all tags with their fork history."""
+    try:
+        history = get_spec_item_history(preset)
+    except ValueError as e:
+        print(f"Error: {e}")
         return 1
 
-    # Format output based on requested format
     if args.format == "json":
         result = {
-            "fork": fork,
             "preset": preset,
-            "tags": {
-                "functions": list(pyspec[preset][fork]['functions'].keys()),
-                "constant_vars": list(pyspec[preset][fork]['constant_vars'].keys()),
-                "custom_types": list(pyspec[preset][fork]['custom_types'].keys()),
-                "ssz_objects": list(pyspec[preset][fork]['ssz_objects'].keys()),
-                "dataclasses": list(pyspec[preset][fork]['dataclasses'].keys()),
-                "preset_vars": list(pyspec[preset][fork]['preset_vars'].keys()),
-                "config_vars": list(pyspec[preset][fork]['config_vars'].keys()),
-            }
+            "mode": "history",
+            "history": history
         }
         print(json.dumps(result, indent=2))
     else:
-        # Plain text output
-        print(f"Available tags for {fork} fork ({preset} preset):")
-        maybe_fork = f' fork="{fork}"' if fork != get_latest_fork() else ""
+        print(f"Available tags across all forks ({preset} preset):")
 
-        print("\nFunctions:")
-        for fn_name in sorted(pyspec[preset][fork]['functions'].keys()):
-            if args.search is None or args.search.lower() in fn_name.lower():
-                print(f"  <spec fn=\"{fn_name}\"{maybe_fork} />")
+        def _print_items_with_history(category_name, items_dict, spec_attr):
+            """Helper to print items with their fork history."""
+            if not items_dict:
+                return
+            print(f"\n{category_name}:")
+            for item_name in sorted(items_dict.keys()):
+                if args.search is None or args.search.lower() in item_name.lower():
+                    forks = items_dict[item_name]
+                    fork_list = ", ".join(forks)
+                    print(f"  <spec {spec_attr}=\"{item_name}\" /> ({fork_list})")
 
-        print("\nConstants:")
-        for const_name in sorted(pyspec[preset][fork]['constant_vars'].keys()):
-            if args.search is None or args.search.lower() in const_name.lower():
-                print(f"  <spec constant_var=\"{const_name}\"{maybe_fork} />")
-
-        print("\nCustom Types:")
-        for type_name in sorted(pyspec[preset][fork]['custom_types'].keys()):
-            if args.search is None or args.search.lower() in type_name.lower():
-                print(f"  <spec custom_type=\"{type_name}\"{maybe_fork} />")
-
-        print("\nSSZ Objects:")
-        for obj_name in sorted(pyspec[preset][fork]['ssz_objects'].keys()):
-            if args.search is None or args.search.lower() in obj_name.lower():
-                print(f"  <spec ssz_object=\"{obj_name}\"{maybe_fork} />")
-
-        print("\nDataclasses:")
-        for class_name in sorted(pyspec[preset][fork]['dataclasses'].keys()):
-            if args.search is None or args.search.lower() in class_name.lower():
-                print(f"  <spec dataclass=\"{class_name}\"{maybe_fork} />")
-
-        print("\nPreset Variables:")
-        for var_name in sorted(pyspec[preset][fork]['preset_vars'].keys()):
-            if args.search is None or args.search.lower() in var_name.lower():
-                print(f"  <spec preset_var=\"{var_name}\"{maybe_fork} />")
-
-        print("\nConfig Variables:")
-        for var_name in sorted(pyspec[preset][fork]['config_vars'].keys()):
-            if args.search is None or args.search.lower() in var_name.lower():
-                print(f"  <spec config_var=\"{var_name}\"{maybe_fork} />")
+        _print_items_with_history("Functions", history['functions'], "fn")
+        _print_items_with_history("Constants", history['constant_vars'], "constant_var")
+        _print_items_with_history("Custom Types", history['custom_types'], "custom_type")
+        _print_items_with_history("SSZ Objects", history['ssz_objects'], "ssz_object")
+        _print_items_with_history("Dataclasses", history['dataclasses'], "dataclass")
+        _print_items_with_history("Preset Variables", history['preset_vars'], "preset_var")
+        _print_items_with_history("Config Variables", history['config_vars'], "config_var")
 
     return 0
+
+
 
 
 def list_forks(args):
@@ -103,10 +78,10 @@ def list_forks(args):
         print(f"Available presets: {', '.join(pyspec.keys())}")
         return 1
 
+    # Filter out EIP forks
     forks = sorted(
-        pyspec[preset].keys(),
-        # Put phase0 at the top & EIP feature forks at the bottom
-        key=lambda x: (x != "phase0", x.startswith("eip"), x)
+        [fork for fork in pyspec[preset].keys() if not fork.startswith("eip")],
+        key=lambda x: (x != "phase0", x)
     )
 
     if args.format == "json":
@@ -148,20 +123,8 @@ def main():
     )
 
     # Parser for 'list-tags' command
-    list_tags_parser = subparsers.add_parser("list-tags", help="List available specification tags")
+    list_tags_parser = subparsers.add_parser("list-tags", help="List available specification tags with fork history")
     list_tags_parser.set_defaults(func=list_tags)
-    list_tags_parser.add_argument(
-        "--fork",
-        type=str,
-        help="Fork to list tags for",
-        default=get_latest_fork(),
-    )
-    list_tags_parser.add_argument(
-        "--preset",
-        type=str,
-        help="Preset to use (mainnet or minimal)",
-        default="mainnet",
-    )
     list_tags_parser.add_argument(
         "--format",
         type=str,

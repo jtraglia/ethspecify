@@ -107,7 +107,9 @@ def get_previous_forks(fork, version="nightly"):
             if key != f"{fork.upper()}_FORK_VERSION":
                 if key != "GENESIS_FORK_VERSION":
                     f = key.split("_")[0].lower()
-                    previous_forks.append(f)
+                    # Skip EIP forks
+                    if not f.startswith("eip"):
+                        previous_forks.append(f)
     return list(reversed(previous_forks))
 
 
@@ -201,12 +203,150 @@ def get_latest_fork(version="nightly"):
     """A helper function to get the latest non-eip fork."""
     pyspec = get_pyspec(version)
     forks = sorted(
-        pyspec["mainnet"].keys(),
-        key=lambda x: (x != "phase0", x.startswith("eip"), x)
+        [fork for fork in pyspec["mainnet"].keys() if not fork.startswith("eip")],
+        key=lambda x: (x != "phase0", x)
     )
-    for fork in reversed(forks):
-        if not fork.startswith("eip"):
-            return fork
+    return forks[-1] if forks else "phase0"
+
+
+def get_spec_item_changes(fork, preset="mainnet", version="nightly"):
+    """
+    Compare spec items in the given fork with previous forks to detect changes.
+    Returns dict with categories containing items marked as (new) or (modified).
+    """
+    pyspec = get_pyspec(version)
+    if fork not in pyspec[preset]:
+        raise ValueError(f"Fork '{fork}' not found in {preset} preset")
+
+    current_fork_data = pyspec[preset][fork]
+    previous_forks = get_previous_forks(fork, version)
+
+    changes = {
+        'functions': {},
+        'constant_vars': {},
+        'custom_types': {},
+        'ssz_objects': {},
+        'dataclasses': {},
+        'preset_vars': {},
+        'config_vars': {},
+    }
+
+    # Check each category of spec items
+    for category in changes.keys():
+        if category not in current_fork_data:
+            continue
+
+        for item_name, item_content in current_fork_data[category].items():
+            status = _get_item_status(item_name, item_content, category, previous_forks, pyspec, preset)
+            if status:
+                changes[category][item_name] = status
+
+    return changes
+
+
+def _get_item_status(item_name, current_content, category, previous_forks, pyspec, preset):
+    """
+    Determine if an item is new or modified compared to previous forks.
+    Returns 'new', 'modified', or None if unchanged.
+    """
+    # Check if item exists in any previous fork
+    found_in_previous = False
+    previous_content = None
+
+    for prev_fork in previous_forks:
+        if (prev_fork in pyspec[preset] and
+            category in pyspec[preset][prev_fork] and
+            item_name in pyspec[preset][prev_fork][category]):
+
+            found_in_previous = True
+            prev_content = pyspec[preset][prev_fork][category][item_name]
+
+            # Compare content with immediate previous version
+            if prev_content != current_content:
+                return "modified"
+            else:
+                # Found unchanged version, so this is not new or modified
+                return None
+
+    # If not found in any previous fork, it's new
+    if not found_in_previous:
+        return "new"
+
+    return None
+
+
+def get_spec_item_history(preset="mainnet", version="nightly"):
+    """
+    Get the complete history of all spec items across all forks.
+    Returns dict with categories containing items and their fork history.
+    """
+    pyspec = get_pyspec(version)
+    if preset not in pyspec:
+        raise ValueError(f"Preset '{preset}' not found")
+
+    # Get all forks in chronological order, excluding EIP forks
+    all_forks = sorted(
+        [fork for fork in pyspec[preset].keys() if not fork.startswith("eip")],
+        key=lambda x: (x != "phase0", x)
+    )
+
+    # Track all unique items across all forks
+    all_items = {
+        'functions': set(),
+        'constant_vars': set(),
+        'custom_types': set(),
+        'ssz_objects': set(),
+        'dataclasses': set(),
+        'preset_vars': set(),
+        'config_vars': set(),
+    }
+
+    # Collect all item names
+    for fork in all_forks:
+        if fork not in pyspec[preset]:
+            continue
+        fork_data = pyspec[preset][fork]
+        for category in all_items.keys():
+            if category in fork_data:
+                all_items[category].update(fork_data[category].keys())
+
+    # Build history for each item
+    history = {}
+    for category in all_items.keys():
+        history[category] = {}
+        for item_name in all_items[category]:
+            item_history = _trace_item_history(item_name, category, all_forks, pyspec, preset)
+            if item_history:
+                history[category][item_name] = item_history
+
+    return history
+
+
+def _trace_item_history(item_name, category, all_forks, pyspec, preset):
+    """
+    Trace the history of a specific item across all forks.
+    Returns a list of forks where the item was introduced or modified.
+    """
+    history_forks = []
+    previous_content = None
+
+    for fork in all_forks:
+        if (fork in pyspec[preset] and
+            category in pyspec[preset][fork] and
+            item_name in pyspec[preset][fork][category]):
+
+            current_content = pyspec[preset][fork][category][item_name]
+
+            if previous_content is None:
+                # First appearance
+                history_forks.append(fork)
+            elif current_content != previous_content:
+                # Content changed
+                history_forks.append(fork)
+
+            previous_content = current_content
+
+    return history_forks
 
 def parse_common_attributes(attributes):
     try:
