@@ -3,7 +3,7 @@ import json
 import os
 import sys
 
-from .core import grep, replace_spec_tags, get_pyspec, get_latest_fork, get_spec_item_history, load_config
+from .core import grep, replace_spec_tags, get_pyspec, get_latest_fork, get_spec_item_history, load_config, run_checks
 
 
 def process(args):
@@ -15,7 +15,7 @@ def process(args):
 
     # Load config once from the project directory
     config = load_config(project_dir)
-    
+
     for f in grep(project_dir, r"<spec\b.*?>", args.exclude):
         print(f"Processing file: {f}")
         replace_spec_tags(f, config)
@@ -69,6 +69,64 @@ def _list_tags_with_history(args, preset):
     return 0
 
 
+def check(args):
+    """Run checks to validate spec references."""
+    project_dir = os.path.abspath(os.path.expanduser(args.path))
+    if not os.path.isdir(project_dir):
+        print(f"Error: The directory {repr(project_dir)} does not exist.")
+        return 1
+
+    # Load config
+    config = load_config(project_dir)
+
+    # Run checks
+    success, results = run_checks(project_dir, config)
+
+    # Collect all missing items and errors
+    all_missing = []
+    all_errors = []
+    total_coverage = {"found": 0, "expected": 0}
+    total_source_files = {"valid": 0, "total": 0}
+
+    for section_name, section_results in results.items():
+        # Determine the type prefix from section name
+        if "Config Variables" in section_name:
+            type_prefix = "config_var"
+        elif "Preset Variables" in section_name:
+            type_prefix = "preset_var"
+        elif "Ssz Objects" in section_name:
+            type_prefix = "ssz_object"
+        elif "Dataclasses" in section_name:
+            type_prefix = "dataclass"
+        else:
+            type_prefix = section_name.lower().replace(" ", "_")
+
+        # Collect source file errors
+        source = section_results['source_files']
+        total_source_files["valid"] += source["valid"]
+        total_source_files["total"] += source["total"]
+        all_errors.extend(source["errors"])
+
+        # Collect missing items with type prefix
+        coverage = section_results['coverage']
+        total_coverage["found"] += coverage["found"]
+        total_coverage["expected"] += coverage["expected"]
+        for missing in coverage['missing']:
+            all_missing.append(f"MISSING: {type_prefix}.{missing}")
+
+    # Display only errors and missing items
+    for error in all_errors:
+        print(error)
+
+    for missing in sorted(all_missing):
+        print(missing)
+
+    if all_errors or all_missing:
+        return 1
+    else:
+        total_refs = total_coverage['expected']
+        print(f"All specification references ({total_refs}) are valid.")
+        return 0
 
 
 def list_forks(args):
@@ -140,6 +198,16 @@ def main():
         type=str,
         help="Filter tags by search term",
         default=None,
+    )
+
+    # Parser for 'check' command
+    check_parser = subparsers.add_parser("check", help="Check spec reference coverage and validity")
+    check_parser.set_defaults(func=check)
+    check_parser.add_argument(
+        "--path",
+        type=str,
+        help="Directory containing YAML files to check",
+        default=".",
     )
 
     # Parser for 'list-forks' command

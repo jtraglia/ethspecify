@@ -1,5 +1,6 @@
 import difflib
 import functools
+import glob
 import hashlib
 import io
 import os
@@ -17,9 +18,9 @@ def load_config(directory=None):
     """
     if directory is None:
         directory = os.getcwd()
-    
+
     config_path = os.path.join(directory, '.ethspecify.yml')
-    
+
     if os.path.exists(config_path):
         try:
             with open(config_path, 'r') as f:
@@ -28,8 +29,29 @@ def load_config(directory=None):
         except (yaml.YAMLError, IOError) as e:
             print(f"Warning: Error reading .ethspecify.yml file: {e}")
             return {}
-    
+
     return {}
+
+
+def is_excepted(item_name, fork, exceptions):
+    """
+    Check if an item#fork combination is in the exception list.
+    Exceptions can be:
+    - Just the item name (applies to all forks)
+    - item#fork (specific fork)
+    """
+    if not exceptions:
+        return False
+
+    # Check for exact match with fork
+    if f"{item_name}#{fork}" in exceptions:
+        return True
+
+    # Check for item name only (all forks)
+    if item_name in exceptions:
+        return True
+
+    return False
 
 
 def strip_comments(code):
@@ -374,7 +396,7 @@ def _trace_item_history(item_name, category, all_forks, pyspec, preset):
 def parse_common_attributes(attributes, config=None):
     if config is None:
         config = {}
-    
+
     try:
         preset = attributes["preset"]
     except KeyError:
@@ -452,7 +474,7 @@ def extract_attributes(tag):
 def replace_spec_tags(file_path, config=None):
     with open(file_path, 'r') as file:
         content = file.read()
-    
+
     # Use provided config or load from file's directory as fallback
     if config is None:
         config = load_config(os.path.dirname(file_path))
@@ -524,3 +546,310 @@ def replace_spec_tags(file_path, config=None):
     # Write the updated content back to the file
     with open(file_path, 'w') as file:
         file.write(updated_content)
+
+
+def check_source_files(yaml_file, project_root):
+    """
+    Check that source files referenced in a YAML file exist and contain expected search strings.
+    Returns (valid_count, total_count, errors)
+    """
+    if not os.path.exists(yaml_file):
+        return 0, 0, [f"YAML file not found: {yaml_file}"]
+
+    errors = []
+    total_count = 0
+
+    try:
+        with open(yaml_file, 'r') as f:
+            content_str = f.read()
+
+        # Try to fix common YAML issues with unquoted search strings
+        # Replace unquoted search values ending with colons
+        content_str = re.sub(r'(\s+search:\s+)([^"\n]+:)(\s*$)', r'\1"\2"\3', content_str, flags=re.MULTILINE)
+
+        try:
+            content = yaml.safe_load(content_str)
+        except yaml.YAMLError:
+            # Fall back to FullLoader if safe_load fails
+            content = yaml.load(content_str, Loader=yaml.FullLoader)
+    except (yaml.YAMLError, IOError) as e:
+        return 0, 0, [f"YAML parsing error in {yaml_file}: {e}"]
+
+    if not content:
+        return 0, 0, []
+
+    # Handle both array of objects and single object formats
+    items = content if isinstance(content, list) else [content]
+
+    for item in items:
+        if not isinstance(item, dict) or 'sources' not in item:
+            continue
+
+        # Extract spec reference information from the item
+        spec_ref = None
+        if 'name' in item:
+            spec_ref = item['name']
+        elif 'spec' in item and isinstance(item['spec'], str):
+            # Try to extract spec reference from spec content
+            spec_content = item['spec']
+            patterns = [
+                r'<spec\s+(\w+)="([^"]+)"[^>]*fork="([^"]+)"',
+                r'<spec\s+[^>]*(\w+)="([^"]+)"[^>]*fork="([^"]+)"'
+            ]
+            for pattern in patterns:
+                match = re.search(pattern, spec_content)
+                if match:
+                    attr_type, attr_value, fork = match.groups()
+                    spec_ref = f"{attr_type}.{attr_value}#{fork}"
+                    break
+
+        for source in item['sources']:
+            # All sources now use the standardized dict format with file and optional search
+            if not isinstance(source, dict) or 'file' not in source:
+                continue
+
+            file_path = source['file']
+            search_string = source.get('search')
+
+            total_count += 1
+
+            # Parse line range from file path if present (#L123 or #L123-L456)
+            line_range = None
+            if '#L' in file_path:
+                base_path, line_part = file_path.split('#L', 1)
+                file_path = base_path
+                # Format is always #L123 or #L123-L456, so just remove all 'L' characters
+                line_range = line_part.replace('L', '')
+
+            full_path = os.path.join(project_root, file_path)
+
+            # Create error prefix with spec reference if available
+            ref_prefix = f"{spec_ref} | " if spec_ref else ""
+
+            # Check if file exists
+            if not os.path.exists(full_path):
+                errors.append(f"MISSING FILE: {ref_prefix}{file_path}")
+                continue
+
+            # Check line range if specified
+            if line_range:
+                try:
+                    with open(full_path, 'r', encoding='utf-8') as f:
+                        lines = f.readlines()
+                        total_lines = len(lines)
+
+                    # Parse line range
+                    if '-' in line_range:
+                        # Range like "123-456"
+                        start_str, end_str = line_range.split('-', 1)
+                        start_line = int(start_str)
+                        end_line = int(end_str)
+
+                        if start_line < 1 or end_line < 1 or start_line > end_line:
+                            errors.append(f"INVALID LINE RANGE: {ref_prefix}#{line_range} - invalid range in {file_path}")
+                            continue
+                        elif end_line > total_lines:
+                            errors.append(f"INVALID LINE RANGE: {ref_prefix}#{line_range} - line {end_line} exceeds file length ({total_lines}) in {file_path}")
+                            continue
+                    else:
+                        # Single line like "123"
+                        line_num = int(line_range)
+                        if line_num < 1:
+                            errors.append(f"INVALID LINE RANGE: {ref_prefix}#{line_range} - invalid line number in {file_path}")
+                            continue
+                        elif line_num > total_lines:
+                            errors.append(f"INVALID LINE RANGE: {ref_prefix}#{line_range} - line {line_num} exceeds file length ({total_lines}) in {file_path}")
+                            continue
+
+                except ValueError:
+                    errors.append(f"INVALID LINE RANGE: {ref_prefix}#{line_range} - invalid line format in {file_path}")
+                    continue
+                except (IOError, UnicodeDecodeError):
+                    errors.append(f"ERROR READING: {ref_prefix}{file_path}")
+                    continue
+
+            # Check search string if provided
+            if search_string:
+                try:
+                    with open(full_path, 'r', encoding='utf-8') as f:
+                        if search_string not in f.read():
+                            errors.append(f"SEARCH NOT FOUND: {ref_prefix}'{search_string}' in {file_path}")
+                except (IOError, UnicodeDecodeError):
+                    errors.append(f"ERROR READING: {ref_prefix}{file_path}")
+
+    valid_count = total_count - len(errors)
+    return valid_count, total_count, errors
+
+
+def extract_spec_tags_from_yaml(yaml_file, tag_type):
+    """
+    Extract spec tags from a YAML file and return item#fork pairs.
+    """
+    if not os.path.exists(yaml_file):
+        return set()
+
+    pairs = set()
+    try:
+        with open(yaml_file, 'r') as f:
+            content_str = f.read()
+
+        # Try to fix common YAML issues with unquoted search strings
+        # Replace unquoted search values ending with colons
+        content_str = re.sub(r'(\s+search:\s+)([^"\n]+:)(\s*$)', r'\1"\2"\3', content_str, flags=re.MULTILINE)
+
+        try:
+            content = yaml.safe_load(content_str)
+        except yaml.YAMLError:
+            # Fall back to FullLoader if safe_load fails
+            content = yaml.load(content_str, Loader=yaml.FullLoader)
+
+        if not content:
+            return set()
+
+        # Handle both array of objects and single object formats
+        items = content if isinstance(content, list) else [content]
+
+        for item in items:
+            if not isinstance(item, dict) or 'spec' not in item:
+                continue
+
+            spec_content = item['spec']
+            if not isinstance(spec_content, str):
+                continue
+
+            # Find spec tags using regex in the spec field
+            pattern = rf'<spec\s+{tag_type}="([^"]+)"[^>]*fork="([^"]+)"'
+            matches = re.findall(pattern, spec_content)
+
+            for match_item, fork in matches:
+                pairs.add(f"{match_item}#{fork}")
+
+    except (IOError, UnicodeDecodeError, yaml.YAMLError):
+        pass
+
+    return pairs
+
+
+def check_coverage(yaml_file, tag_type, exceptions, preset="mainnet"):
+    """
+    Check that all spec items from ethspecify have corresponding tags in the YAML file.
+    Returns (found_count, total_count, missing_items)
+    """
+    # Map tag types to history keys
+    history_key_map = {
+        'ssz_object': 'ssz_objects',
+        'config_var': 'config_vars',
+        'preset_var': 'preset_vars',
+        'dataclass': 'dataclasses',
+        'fn': 'functions',
+        'constant_var': 'constant_vars',
+        'custom_type': 'custom_types'
+    }
+
+    # Get expected items from ethspecify
+    history = get_spec_item_history(preset)
+    expected_pairs = set()
+
+    history_key = history_key_map.get(tag_type, tag_type)
+    if history_key in history:
+        for item_name, forks in history[history_key].items():
+            for fork in forks:
+                expected_pairs.add(f"{item_name}#{fork}")
+
+    # Get actual pairs from YAML file
+    actual_pairs = extract_spec_tags_from_yaml(yaml_file, tag_type)
+
+    # Find missing items (excluding exceptions)
+    missing_items = []
+    total_count = len(expected_pairs)
+
+    for item_fork in expected_pairs:
+        item_name, fork = item_fork.split('#', 1)
+
+        if is_excepted(item_name, fork, exceptions):
+            continue
+
+        if item_fork not in actual_pairs:
+            missing_items.append(item_fork)
+
+    found_count = total_count - len(missing_items)
+    return found_count, total_count, missing_items
+
+
+def run_checks(project_dir, config):
+    """
+    Run all checks based on the configuration.
+    Returns (success, results)
+    """
+    results = {}
+    overall_success = True
+
+    # Get exceptions from config
+    exceptions = config.get('exceptions', {})
+
+    # Auto-discover YAML files and their types
+    file_type_mapping = {
+        'ssz-objects': 'ssz_object',
+        'config-variables': 'config_var',
+        'preset-variables': 'preset_var',
+        'dataclasses': 'dataclass',
+    }
+
+    # Find all YAML files in the directory
+    yaml_files = glob.glob(os.path.join(project_dir, '*.yml'))
+
+    for yaml_path in yaml_files:
+        filename = os.path.basename(yaml_path)
+        if filename.startswith('.'):  # Skip config files like .ethspecify.yml
+            continue
+
+        # Determine the tag type from filename
+        tag_type = None
+        section_name = None
+        preset = "mainnet"  # default preset
+
+        for pattern, file_tag_type in file_type_mapping.items():
+            if pattern in filename:
+                tag_type = file_tag_type
+                section_name = pattern.replace('-', ' ').title()
+
+                # Check for preset indicators
+                if 'minimal' in filename.lower():
+                    preset = "minimal"
+                    section_name += " (Minimal)"
+                elif 'mainnet' in filename.lower():
+                    section_name += " (Mainnet)"
+
+                break
+
+        if not tag_type:
+            print(f"Warning: Could not determine type for file {filename}")
+            continue
+
+        section_exceptions = exceptions.get(tag_type, [])
+
+        # Check source files
+        valid_count, total_count, source_errors = check_source_files(yaml_path, os.path.dirname(project_dir))
+
+        # Check coverage
+        found_count, expected_count, missing_items = check_coverage(yaml_path, tag_type, section_exceptions, preset)
+
+        # Store results
+        results[section_name] = {
+            'source_files': {
+                'valid': valid_count,
+                'total': total_count,
+                'errors': source_errors
+            },
+            'coverage': {
+                'found': found_count,
+                'expected': expected_count,
+                'missing': missing_items
+            }
+        }
+
+        # Update overall success
+        if source_errors or missing_items:
+            overall_success = False
+
+    return overall_success, results
