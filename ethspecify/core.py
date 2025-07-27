@@ -7,6 +7,29 @@ import re
 import requests
 import textwrap
 import tokenize
+import yaml
+
+
+def load_config(directory=None):
+    """
+    Load configuration from .ethspecify.yml file in the specified directory.
+    Returns a dict with configuration values, or empty dict if no config file found.
+    """
+    if directory is None:
+        directory = os.getcwd()
+    
+    config_path = os.path.join(directory, '.ethspecify.yml')
+    
+    if os.path.exists(config_path):
+        try:
+            with open(config_path, 'r') as f:
+                config = yaml.safe_load(f)
+                return config if config else {}
+        except (yaml.YAMLError, IOError) as e:
+            print(f"Warning: Error reading .ethspecify.yml file: {e}")
+            return {}
+    
+    return {}
 
 
 def strip_comments(code):
@@ -348,7 +371,10 @@ def _trace_item_history(item_name, category, all_forks, pyspec, preset):
 
     return history_forks
 
-def parse_common_attributes(attributes):
+def parse_common_attributes(attributes, config=None):
+    if config is None:
+        config = {}
+    
     try:
         preset = attributes["preset"]
     except KeyError:
@@ -357,7 +383,7 @@ def parse_common_attributes(attributes):
     try:
         version = attributes["version"]
     except KeyError:
-        version = "nightly"
+        version = config.get("version", "nightly")
 
     try:
         fork = attributes["fork"]
@@ -367,12 +393,12 @@ def parse_common_attributes(attributes):
     try:
         style = attributes["style"]
     except KeyError:
-        style = "hash"
+        style = config.get("style", "hash")
 
     return preset, fork, style, version
 
-def get_spec_item(attributes):
-    preset, fork, style, version = parse_common_attributes(attributes)
+def get_spec_item(attributes, config=None):
+    preset, fork, style, version = parse_common_attributes(attributes, config)
     spec = get_spec(attributes, preset, fork, version)
 
     if style == "full" or style == "hash":
@@ -423,9 +449,13 @@ def extract_attributes(tag):
     return dict(attr_pattern.findall(tag))
 
 
-def replace_spec_tags(file_path):
+def replace_spec_tags(file_path, config=None):
     with open(file_path, 'r') as file:
         content = file.read()
+    
+    # Use provided config or load from file's directory as fallback
+    if config is None:
+        config = load_config(os.path.dirname(file_path))
 
     # Define regex to match self-closing tags and long (paired) tags separately
     pattern = re.compile(
@@ -467,7 +497,7 @@ def replace_spec_tags(file_path):
 
         attributes = extract_attributes(original_tag_text)
         print(f"spec tag: {attributes}")
-        preset, fork, style, version = parse_common_attributes(attributes)
+        preset, fork, style, version = parse_common_attributes(attributes, config)
         spec = get_spec(attributes, preset, fork, version)
         hash_value = hashlib.sha256(spec.encode('utf-8')).hexdigest()[:8]
 
@@ -478,7 +508,7 @@ def replace_spec_tags(file_path):
         else:
             # For full/diff styles, rebuild as a long (paired) tag.
             new_opening = rebuild_opening_tag(attributes, hash_value)
-            spec_content = get_spec_item(attributes)
+            spec_content = get_spec_item(attributes, config)
             prefix = content[:match.start()].splitlines()[-1]
             prefixed_spec = "\n".join(
                 f"{prefix}{line}" if line.rstrip() else prefix.rstrip()

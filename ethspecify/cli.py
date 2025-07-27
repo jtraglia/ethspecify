@@ -3,7 +3,7 @@ import json
 import os
 import sys
 
-from .core import grep, replace_spec_tags, get_pyspec, get_latest_fork, get_spec_item_history
+from .core import grep, replace_spec_tags, get_pyspec, get_latest_fork, get_spec_item_history, load_config
 
 
 def process(args):
@@ -13,9 +13,12 @@ def process(args):
         print(f"Error: The directory {repr(project_dir)} does not exist.")
         return 1
 
+    # Load config once from the project directory
+    config = load_config(project_dir)
+    
     for f in grep(project_dir, r"<spec\b.*?>", args.exclude):
         print(f"Processing file: {f}")
-        replace_spec_tags(f)
+        replace_spec_tags(f, config)
 
     return 0
 

@@ -23,6 +23,7 @@ setup(
     },
     install_requires=[
         "requests==2.32.3",
+        "PyYAML>=6.0",
     ],
     classifiers=[
         "Programming Language :: Python :: 3",
