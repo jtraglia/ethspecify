@@ -804,15 +804,22 @@ def run_checks(project_dir, config):
     results = {}
     overall_success = True
 
-    # Get exceptions from config
-    exceptions = config.get('exceptions', {})
-
-    # Check if config has explicit file list
-    specrefs_files = config.get('specrefs', [])
+    # Get specrefs config
+    specrefs_config = config.get('specrefs', {})
+    
+    # Handle both old format (specrefs as array) and new format (specrefs as dict)
+    if isinstance(specrefs_config, list):
+        # Old format: specrefs: [file1, file2, ...]
+        specrefs_files = specrefs_config
+        exceptions = config.get('exceptions', {})
+    else:
+        # New format: specrefs: { files: [...], exceptions: {...} }
+        specrefs_files = specrefs_config.get('files', [])
+        exceptions = specrefs_config.get('exceptions', {})
 
     if not specrefs_files:
         print("Error: No specrefs files specified in .ethspecify.yml")
-        print("Please add a 'specrefs:' section listing the files to check")
+        print("Please add a 'specrefs:' section with 'files:' listing the files to check")
         return False, {}
 
     # File type mapping for coverage checking
@@ -851,7 +858,25 @@ def run_checks(project_dir, config):
         # Check coverage if we can determine the type
         found_count, expected_count, missing_items = 0, 0, []
         if tag_type:
-            section_exceptions = exceptions.get(tag_type, [])
+            # Map tag types to exception keys (support both singular and plural)
+            exception_key_map = {
+                'ssz_object': ['ssz_objects', 'ssz_object'],
+                'config_var': ['config_variables', 'config_var'],
+                'preset_var': ['preset_variables', 'preset_var'],
+                'dataclass': ['dataclasses', 'dataclass'],
+                'fn': ['functions', 'fn'],
+                'constant_var': ['constant_variables', 'constant_var'],
+                'custom_type': ['custom_types', 'custom_type']
+            }
+            
+            # Try plural first, then singular for backward compatibility
+            section_exceptions = []
+            if tag_type in exception_key_map:
+                for key in exception_key_map[tag_type]:
+                    if key in exceptions:
+                        section_exceptions = exceptions[key]
+                        break
+            
             found_count, expected_count, missing_items = check_coverage(yaml_path, tag_type, section_exceptions, preset)
 
         # Store results using filename as section name
