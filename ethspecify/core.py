@@ -807,54 +807,58 @@ def run_checks(project_dir, config):
     # Get exceptions from config
     exceptions = config.get('exceptions', {})
 
-    # Auto-discover YAML files and their types
+    # Check if config has explicit file list
+    specrefs_files = config.get('specrefs', [])
+
+    if not specrefs_files:
+        print("Error: No specrefs files specified in .ethspecify.yml")
+        print("Please add a 'specrefs:' section listing the files to check")
+        return False, {}
+
+    # File type mapping for coverage checking
     file_type_mapping = {
         'ssz-objects': 'ssz_object',
         'config-variables': 'config_var',
         'preset-variables': 'preset_var',
         'dataclasses': 'dataclass',
+        'functions': 'fn',
     }
 
-    # Find all YAML files in the directory
-    yaml_files = glob.glob(os.path.join(project_dir, '*.yml'))
+    # Use explicit file list only
+    for filename in specrefs_files:
+        yaml_path = os.path.join(project_dir, filename)
 
-    for yaml_path in yaml_files:
-        filename = os.path.basename(yaml_path)
-        if filename.startswith('.'):  # Skip config files like .ethspecify.yml
+        if not os.path.exists(yaml_path):
+            print(f"Error: File {filename} defined in config but not found")
+            overall_success = False
             continue
 
-        # Determine the tag type from filename
+        # Determine the tag type from filename for coverage checking
         tag_type = None
-        section_name = None
         preset = "mainnet"  # default preset
 
         for pattern, file_tag_type in file_type_mapping.items():
             if pattern in filename:
                 tag_type = file_tag_type
-                section_name = pattern.replace('-', ' ').title()
-
                 # Check for preset indicators
                 if 'minimal' in filename.lower():
                     preset = "minimal"
-                    section_name += " (Minimal)"
-                elif 'mainnet' in filename.lower():
-                    section_name += " (Mainnet)"
-
                 break
-
-        if not tag_type:
-            print(f"Warning: Could not determine type for file {filename}")
-            continue
-
-        section_exceptions = exceptions.get(tag_type, [])
 
         # Check source files
         valid_count, total_count, source_errors = check_source_files(yaml_path, os.path.dirname(project_dir))
 
-        # Check coverage
-        found_count, expected_count, missing_items = check_coverage(yaml_path, tag_type, section_exceptions, preset)
+        # Check coverage if we can determine the type
+        found_count, expected_count, missing_items = 0, 0, []
+        if tag_type:
+            section_exceptions = exceptions.get(tag_type, [])
+            found_count, expected_count, missing_items = check_coverage(yaml_path, tag_type, section_exceptions, preset)
 
-        # Store results
+        # Store results using filename as section name
+        section_name = filename.replace('.yml', '').replace('-', ' ').title()
+        if preset != "mainnet":
+            section_name += f" ({preset.title()})"
+
         results[section_name] = {
             'source_files': {
                 'valid': valid_count,
