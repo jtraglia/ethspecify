@@ -548,11 +548,13 @@ def replace_spec_tags(file_path, config=None):
         file.write(updated_content)
 
 
-def check_source_files(yaml_file, project_root):
+def check_source_files(yaml_file, project_root, exceptions=None):
     """
     Check that source files referenced in a YAML file exist and contain expected search strings.
     Returns (valid_count, total_count, errors)
     """
+    if exceptions is None:
+        exceptions = []
     if not os.path.exists(yaml_file):
         return 0, 0, [f"YAML file not found: {yaml_file}"]
 
@@ -598,7 +600,7 @@ def check_source_files(yaml_file, project_root):
                 fork_match = re.search(r'fork="([^"]+)"', tag_attrs)
                 # Extract the main attribute (not hash or fork)
                 attr_matches = re.findall(r'(\w+)="([^"]+)"', tag_attrs)
-                
+
                 if fork_match:
                     fork = fork_match.group(1)
                     # Find the first non-meta attribute
@@ -618,7 +620,7 @@ def check_source_files(yaml_file, project_root):
                             type_prefix = type_map.get(attr_name, attr_name)
                             spec_ref = f"{type_prefix}.{attr_value}#{fork}"
                             break
-        
+
         # Fallback to just the name if spec extraction failed
         if not spec_ref and 'name' in item:
             spec_ref = item['name']
@@ -626,6 +628,17 @@ def check_source_files(yaml_file, project_root):
         # Check if sources list is empty
         if not item['sources']:
             if spec_ref:
+                # Extract item name and fork from spec_ref for exception checking
+                if '#' in spec_ref and '.' in spec_ref:
+                    # Format: "functions.item_name#fork"
+                    _, item_with_fork = spec_ref.split('.', 1)
+                    if '#' in item_with_fork:
+                        item_name, fork = item_with_fork.split('#', 1)
+                        # Check if this item is in exceptions
+                        if is_excepted(item_name, fork, exceptions):
+                            total_count += 1
+                            continue
+
                 errors.append(f"EMPTY SOURCES: {spec_ref}")
             else:
                 # Fallback if we can't extract spec reference
@@ -837,7 +850,7 @@ def run_checks(project_dir, config):
 
     # Get specrefs config
     specrefs_config = config.get('specrefs', {})
-    
+
     # Handle both old format (specrefs as array) and new format (specrefs as dict)
     if isinstance(specrefs_config, list):
         # Old format: specrefs: [file1, file2, ...]
@@ -884,11 +897,8 @@ def run_checks(project_dir, config):
                     preset = "minimal"
                 break
 
-        # Check source files
-        valid_count, total_count, source_errors = check_source_files(yaml_path, os.path.dirname(project_dir))
-
-        # Check coverage if we can determine the type
-        found_count, expected_count, missing_items = 0, 0, []
+        # Get the appropriate exceptions for this file type
+        section_exceptions = []
         if tag_type:
             # Map tag types to exception keys (support both singular and plural)
             exception_key_map = {
@@ -900,15 +910,20 @@ def run_checks(project_dir, config):
                 'constant_var': ['constants', 'constant_variables', 'constant_var'],
                 'custom_type': ['custom_types', 'custom_type']
             }
-            
+
             # Try plural first, then singular for backward compatibility
-            section_exceptions = []
             if tag_type in exception_key_map:
                 for key in exception_key_map[tag_type]:
                     if key in exceptions:
                         section_exceptions = exceptions[key]
                         break
-            
+
+        # Check source files
+        valid_count, total_count, source_errors = check_source_files(yaml_path, os.path.dirname(project_dir), section_exceptions)
+
+        # Check coverage if we can determine the type
+        found_count, expected_count, missing_items = 0, 0, []
+        if tag_type:
             found_count, expected_count, missing_items = check_coverage(yaml_path, tag_type, section_exceptions, preset)
 
         # Store results using filename as section name
