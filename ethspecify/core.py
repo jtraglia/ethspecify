@@ -610,6 +610,7 @@ def check_source_files(yaml_file, project_root):
 
             file_path = source['file']
             search_string = source.get('search')
+            is_regex = source.get('regex', False)
 
             total_count += 1
 
@@ -672,8 +673,27 @@ def check_source_files(yaml_file, project_root):
             if search_string:
                 try:
                     with open(full_path, 'r', encoding='utf-8') as f:
-                        if search_string not in f.read():
-                            errors.append(f"SEARCH NOT FOUND: {ref_prefix}'{search_string}' in {file_path}")
+                        content = f.read()
+
+                        if is_regex:
+                            # Use regex search
+                            try:
+                                pattern = re.compile(search_string, re.MULTILINE)
+                                matches = list(pattern.finditer(content))
+                                count = len(matches)
+                                search_type = "REGEX"
+                            except re.error as e:
+                                errors.append(f"INVALID REGEX: {ref_prefix}'{search_string}' in {file_path} - {e}")
+                                continue
+                        else:
+                            # Use literal string search
+                            count = content.count(search_string)
+                            search_type = "SEARCH"
+
+                        if count == 0:
+                            errors.append(f"{search_type} NOT FOUND: {ref_prefix}'{search_string}' in {file_path}")
+                        elif count > 1:
+                            errors.append(f"AMBIGUOUS {search_type}: {ref_prefix}'{search_string}' found {count} times in {file_path}")
                 except (IOError, UnicodeDecodeError):
                     errors.append(f"ERROR READING: {ref_prefix}{file_path}")
 
