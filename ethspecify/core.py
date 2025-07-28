@@ -587,26 +587,50 @@ def check_source_files(yaml_file, project_root):
 
         # Extract spec reference information from the item
         spec_ref = None
-        if 'name' in item:
-            spec_ref = item['name']
-        elif 'spec' in item and isinstance(item['spec'], str):
+        if 'spec' in item and isinstance(item['spec'], str):
             # Try to extract spec reference from spec content
             spec_content = item['spec']
-            patterns = [
-                r'<spec\s+(\w+)="([^"]+)"[^>]*fork="([^"]+)"',
-                r'<spec\s+[^>]*(\w+)="([^"]+)"[^>]*fork="([^"]+)"'
-            ]
-            for pattern in patterns:
-                match = re.search(pattern, spec_content)
-                if match:
-                    attr_type, attr_value, fork = match.groups()
-                    spec_ref = f"{attr_type}.{attr_value}#{fork}"
-                    break
+            # Look for any spec tag attribute and fork
+            spec_tag_match = re.search(r'<spec\s+([^>]+)>', spec_content)
+            if spec_tag_match:
+                tag_attrs = spec_tag_match.group(1)
+                # Extract fork
+                fork_match = re.search(r'fork="([^"]+)"', tag_attrs)
+                # Extract the main attribute (not hash or fork)
+                attr_matches = re.findall(r'(\w+)="([^"]+)"', tag_attrs)
+                
+                if fork_match:
+                    fork = fork_match.group(1)
+                    # Find the first non-meta attribute
+                    for attr_name, attr_value in attr_matches:
+                        if attr_name not in ['fork', 'hash', 'preset', 'version', 'style']:
+                            # Map attribute names to type prefixes
+                            type_map = {
+                                'fn': 'functions',
+                                'function': 'functions',
+                                'constant_var': 'constants',
+                                'config_var': 'configs',
+                                'preset_var': 'presets',
+                                'ssz_object': 'ssz_objects',
+                                'dataclass': 'dataclasses',
+                                'custom_type': 'custom_types'
+                            }
+                            type_prefix = type_map.get(attr_name, attr_name)
+                            spec_ref = f"{type_prefix}.{attr_value}#{fork}"
+                            break
+        
+        # Fallback to just the name if spec extraction failed
+        if not spec_ref and 'name' in item:
+            spec_ref = item['name']
 
         # Check if sources list is empty
         if not item['sources']:
-            spec_ref_text = f" ({spec_ref})" if spec_ref else ""
-            errors.append(f"EMPTY SOURCES: No sources defined{spec_ref_text}")
+            if spec_ref:
+                errors.append(f"EMPTY SOURCES: {spec_ref}")
+            else:
+                # Fallback if we can't extract spec reference
+                item_name = item.get('name', 'unknown')
+                errors.append(f"EMPTY SOURCES: No sources defined ({item_name})")
             total_count += 1
             continue
 
