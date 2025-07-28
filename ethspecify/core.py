@@ -829,6 +829,7 @@ def run_checks(project_dir, config):
         'preset-variables': 'preset_var',
         'dataclasses': 'dataclass',
         'functions': 'fn',
+        'constants': 'constant_var',
     }
 
     # Use explicit file list only
