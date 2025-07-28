@@ -603,6 +603,13 @@ def check_source_files(yaml_file, project_root):
                     spec_ref = f"{attr_type}.{attr_value}#{fork}"
                     break
 
+        # Check if sources list is empty
+        if not item['sources']:
+            spec_ref_text = f" ({spec_ref})" if spec_ref else ""
+            errors.append(f"EMPTY SOURCES: No sources defined{spec_ref_text}")
+            total_count += 1
+            continue
+
         for source in item['sources']:
             # All sources now use the standardized dict format with file and optional search
             if not isinstance(source, dict) or 'file' not in source:
@@ -862,11 +869,11 @@ def run_checks(project_dir, config):
             # Map tag types to exception keys (support both singular and plural)
             exception_key_map = {
                 'ssz_object': ['ssz_objects', 'ssz_object'],
-                'config_var': ['config_variables', 'config_var'],
-                'preset_var': ['preset_variables', 'preset_var'],
+                'config_var': ['configs', 'config_variables', 'config_var'],
+                'preset_var': ['presets', 'preset_variables', 'preset_var'],
                 'dataclass': ['dataclasses', 'dataclass'],
                 'fn': ['functions', 'fn'],
-                'constant_var': ['constant_variables', 'constant_var'],
+                'constant_var': ['constants', 'constant_variables', 'constant_var'],
                 'custom_type': ['custom_types', 'custom_type']
             }
             
