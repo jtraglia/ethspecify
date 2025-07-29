@@ -745,14 +745,21 @@ def check_source_files(yaml_file, project_root, exceptions=None):
     return valid_count, total_count, errors
 
 
-def extract_spec_tags_from_yaml(yaml_file, tag_type):
+def extract_spec_tags_from_yaml(yaml_file, tag_type=None):
     """
-    Extract spec tags from a YAML file and return item#fork pairs.
+    Extract spec tags from a YAML file and return (tag_types_found, item#fork pairs).
+    If tag_type is provided, only extract tags of that type.
     """
     if not os.path.exists(yaml_file):
-        return set()
+        return set(), set()
 
     pairs = set()
+    tag_types_found = set()
+
+    # Known tag type attributes
+    tag_attributes = ['fn', 'function', 'constant_var', 'config_var', 'preset_var',
+                      'ssz_object', 'dataclass', 'custom_type']
+
     try:
         with open(yaml_file, 'r') as f:
             content_str = f.read()
@@ -768,7 +775,7 @@ def extract_spec_tags_from_yaml(yaml_file, tag_type):
             content = yaml.load(content_str, Loader=yaml.FullLoader)
 
         if not content:
-            return set()
+            return tag_types_found, pairs
 
         # Handle both array of objects and single object formats
         items = content if isinstance(content, list) else [content]
@@ -781,17 +788,38 @@ def extract_spec_tags_from_yaml(yaml_file, tag_type):
             if not isinstance(spec_content, str):
                 continue
 
-            # Find spec tags using regex in the spec field
-            pattern = rf'<spec\s+{tag_type}="([^"]+)"[^>]*fork="([^"]+)"'
-            matches = re.findall(pattern, spec_content)
+            # Find all spec tags in the content
+            spec_tag_pattern = r'<spec\s+([^>]+)>'
+            spec_matches = re.findall(spec_tag_pattern, spec_content)
 
-            for match_item, fork in matches:
-                pairs.add(f"{match_item}#{fork}")
+            for tag_attrs_str in spec_matches:
+                # Extract all attributes from the tag
+                attrs = dict(re.findall(r'(\w+)="([^"]+)"', tag_attrs_str))
+
+                # Find which tag type this is
+                found_tag_type = None
+                item_name = None
+
+                for attr in tag_attributes:
+                    if attr in attrs:
+                        found_tag_type = attr
+                        item_name = attrs[attr]
+                        # Normalize function to fn
+                        if found_tag_type == 'function':
+                            found_tag_type = 'fn'
+                        break
+
+                if found_tag_type and 'fork' in attrs:
+                    tag_types_found.add(found_tag_type)
+
+                    # If tag_type filter is specified, only add matching types
+                    if tag_type is None or tag_type == found_tag_type:
+                        pairs.add(f"{item_name}#{attrs['fork']}")
 
     except (IOError, UnicodeDecodeError, yaml.YAMLError):
         pass
 
-    return pairs
+    return tag_types_found, pairs
 
 
 def check_coverage(yaml_file, tag_type, exceptions, preset="mainnet"):
@@ -821,7 +849,7 @@ def check_coverage(yaml_file, tag_type, exceptions, preset="mainnet"):
                 expected_pairs.add(f"{item_name}#{fork}")
 
     # Get actual pairs from YAML file
-    actual_pairs = extract_spec_tags_from_yaml(yaml_file, tag_type)
+    _, actual_pairs = extract_spec_tags_from_yaml(yaml_file, tag_type)
 
     # Find missing items (excluding exceptions)
     missing_items = []
@@ -866,14 +894,15 @@ def run_checks(project_dir, config):
         print("Please add a 'specrefs:' section with 'files:' listing the files to check")
         return False, {}
 
-    # File type mapping for coverage checking
-    file_type_mapping = {
-        'ssz-objects': 'ssz_object',
-        'config-variables': 'config_var',
-        'preset-variables': 'preset_var',
-        'dataclasses': 'dataclass',
-        'functions': 'fn',
-        'constants': 'constant_var',
+    # Map tag types to exception keys (support both singular and plural)
+    exception_key_map = {
+        'ssz_object': ['ssz_objects', 'ssz_object'],
+        'config_var': ['configs', 'config_variables', 'config_var'],
+        'preset_var': ['presets', 'preset_variables', 'preset_var'],
+        'dataclass': ['dataclasses', 'dataclass'],
+        'fn': ['functions', 'fn'],
+        'constant_var': ['constants', 'constant_variables', 'constant_var'],
+        'custom_type': ['custom_types', 'custom_type']
     }
 
     # Use explicit file list only
@@ -885,67 +914,91 @@ def run_checks(project_dir, config):
             overall_success = False
             continue
 
-        # Determine the tag type from filename for coverage checking
-        tag_type = None
+        # Detect tag types in the file
+        tag_types_found, _ = extract_spec_tags_from_yaml(yaml_path)
+
+        # Check for preset indicators in filename
         preset = "mainnet"  # default preset
+        if 'minimal' in filename.lower():
+            preset = "minimal"
 
-        for pattern, file_tag_type in file_type_mapping.items():
-            if pattern in filename:
-                tag_type = file_tag_type
-                # Check for preset indicators
-                if 'minimal' in filename.lower():
-                    preset = "minimal"
-                break
+        # Process each tag type found in the file
+        if not tag_types_found:
+            # No spec tags found, still check source files
+            valid_count, total_count, source_errors = check_source_files(yaml_path, os.path.dirname(project_dir), [])
 
-        # Get the appropriate exceptions for this file type
-        section_exceptions = []
-        if tag_type:
-            # Map tag types to exception keys (support both singular and plural)
-            exception_key_map = {
-                'ssz_object': ['ssz_objects', 'ssz_object'],
-                'config_var': ['configs', 'config_variables', 'config_var'],
-                'preset_var': ['presets', 'preset_variables', 'preset_var'],
-                'dataclass': ['dataclasses', 'dataclass'],
-                'fn': ['functions', 'fn'],
-                'constant_var': ['constants', 'constant_variables', 'constant_var'],
-                'custom_type': ['custom_types', 'custom_type']
+            # Store results using filename as section name
+            section_name = filename.replace('.yml', '').replace('-', ' ').title()
+            if preset != "mainnet":
+                section_name += f" ({preset.title()})"
+
+            results[section_name] = {
+                'source_files': {
+                    'valid': valid_count,
+                    'total': total_count,
+                    'errors': source_errors
+                },
+                'coverage': {
+                    'found': 0,
+                    'expected': 0,
+                    'missing': []
+                }
             }
 
-            # Try plural first, then singular for backward compatibility
-            if tag_type in exception_key_map:
-                for key in exception_key_map[tag_type]:
-                    if key in exceptions:
-                        section_exceptions = exceptions[key]
-                        break
+            if source_errors:
+                overall_success = False
+        else:
+            # Process each tag type separately for better reporting
+            all_missing_items = []
+            total_found = 0
+            total_expected = 0
 
-        # Check source files
-        valid_count, total_count, source_errors = check_source_files(yaml_path, os.path.dirname(project_dir), section_exceptions)
+            for tag_type in tag_types_found:
+                # Get the appropriate exceptions for this tag type
+                section_exceptions = []
+                if tag_type in exception_key_map:
+                    for key in exception_key_map[tag_type]:
+                        if key in exceptions:
+                            section_exceptions = exceptions[key]
+                            break
 
-        # Check coverage if we can determine the type
-        found_count, expected_count, missing_items = 0, 0, []
-        if tag_type:
-            found_count, expected_count, missing_items = check_coverage(yaml_path, tag_type, section_exceptions, preset)
+                # Check coverage for this specific tag type
+                found_count, expected_count, missing_items = check_coverage(yaml_path, tag_type, section_exceptions, preset)
+                total_found += found_count
+                total_expected += expected_count
+                all_missing_items.extend(missing_items)
 
-        # Store results using filename as section name
-        section_name = filename.replace('.yml', '').replace('-', ' ').title()
-        if preset != "mainnet":
-            section_name += f" ({preset.title()})"
+            # Check source files (only once per file, not per tag type)
+            # Use the union of all exceptions for source file checking
+            all_exceptions = []
+            for tag_type in tag_types_found:
+                if tag_type in exception_key_map:
+                    for key in exception_key_map[tag_type]:
+                        if key in exceptions:
+                            all_exceptions.extend(exceptions[key])
 
-        results[section_name] = {
-            'source_files': {
-                'valid': valid_count,
-                'total': total_count,
-                'errors': source_errors
-            },
-            'coverage': {
-                'found': found_count,
-                'expected': expected_count,
-                'missing': missing_items
+            valid_count, total_count, source_errors = check_source_files(yaml_path, os.path.dirname(project_dir), all_exceptions)
+
+            # Store results using filename as section name
+            section_name = filename.replace('.yml', '').replace('-', ' ').title()
+            if preset != "mainnet":
+                section_name += f" ({preset.title()})"
+
+            results[section_name] = {
+                'source_files': {
+                    'valid': valid_count,
+                    'total': total_count,
+                    'errors': source_errors
+                },
+                'coverage': {
+                    'found': total_found,
+                    'expected': total_expected,
+                    'missing': all_missing_items
+                }
             }
-        }
 
-        # Update overall success
-        if source_errors or missing_items:
-            overall_success = False
+            # Update overall success
+            if source_errors or all_missing_items:
+                overall_success = False
 
     return overall_success, results
