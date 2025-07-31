@@ -1545,8 +1545,6 @@
   "specs/_features/eip7732/beacon-chain.md::#execution-payload-processing": "https://github.com/ethereum/consensus-specs/blob/master/specs/_features/eip7732/beacon-chain.md#execution-payload-processing",
   "specs/_features/eip7732/beacon-chain.md::#new-verify_execution_payload_envelope_signature": "https://github.com/ethereum/consensus-specs/blob/master/specs/_features/eip7732/beacon-chain.md#new-verify_execution_payload_envelope_signature",
   "specs/_features/eip7732/beacon-chain.md::#new-process_execution_payload": "https://github.com/ethereum/consensus-specs/blob/master/specs/_features/eip7732/beacon-chain.md#new-process_execution_payload",
-  "specs/_features/eip7732/beacon-chain.md::#testing": "https://github.com/ethereum/consensus-specs/blob/master/specs/_features/eip7732/beacon-chain.md#testing",
-  "specs/_features/eip7732/beacon-chain.md::#modified-is_merge_transition_complete-1": "https://github.com/ethereum/consensus-specs/blob/master/specs/_features/eip7732/beacon-chain.md#modified-is_merge_transition_complete-1",
   "specs/_features/eip7732/validator.md::#introduction": "https://github.com/ethereum/consensus-specs/blob/master/specs/_features/eip7732/validator.md#introduction",
   "specs/_features/eip7732/validator.md::#validator-assignment": "https://github.com/ethereum/consensus-specs/blob/master/specs/_features/eip7732/validator.md#validator-assignment",
   "specs/_features/eip7732/validator.md::#lookahead": "https://github.com/ethereum/consensus-specs/blob/master/specs/_features/eip7732/validator.md#lookahead",
