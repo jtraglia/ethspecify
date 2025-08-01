@@ -1753,7 +1753,7 @@
   "ssz/simple-serialize.md::#serialization": "https://github.com/ethereum/consensus-specs/blob/master/ssz/simple-serialize.md#serialization",
   "ssz/simple-serialize.md::#uintn": "https://github.com/ethereum/consensus-specs/blob/master/ssz/simple-serialize.md#uintn",
   "ssz/simple-serialize.md::#boolean": "https://github.com/ethereum/consensus-specs/blob/master/ssz/simple-serialize.md#boolean",
-  "ssz/simple-serialize.md::#vectors-containers-lists": "https://github.com/ethereum/consensus-specs/blob/master/ssz/simple-serialize.md#vectors-containers-lists",
+  "ssz/simple-serialize.md::#vectors-containers-lists-progressive-lists": "https://github.com/ethereum/consensus-specs/blob/master/ssz/simple-serialize.md#vectors-containers-lists-progressive-lists",
   "ssz/simple-serialize.md::#union": "https://github.com/ethereum/consensus-specs/blob/master/ssz/simple-serialize.md#union",
   "ssz/simple-serialize.md::#deserialization": "https://github.com/ethereum/consensus-specs/blob/master/ssz/simple-serialize.md#deserialization",
   "ssz/simple-serialize.md::#merkleization": "https://github.com/ethereum/consensus-specs/blob/master/ssz/simple-serialize.md#merkleization",
