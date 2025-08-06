@@ -822,7 +822,7 @@ def extract_spec_tags_from_yaml(yaml_file, tag_type=None):
     return tag_types_found, pairs
 
 
-def check_coverage(yaml_file, tag_type, exceptions, preset="mainnet"):
+def check_coverage(yaml_file, tag_type, exceptions, preset="mainnet", version="nightly"):
     """
     Check that all spec items from ethspecify have corresponding tags in the YAML file.
     Returns (found_count, total_count, missing_items)
@@ -839,7 +839,7 @@ def check_coverage(yaml_file, tag_type, exceptions, preset="mainnet"):
     }
 
     # Get expected items from ethspecify
-    history = get_spec_item_history(preset)
+    history = get_spec_item_history(preset, version)
     expected_pairs = set()
 
     history_key = history_key_map.get(tag_type, tag_type)
@@ -875,6 +875,9 @@ def run_checks(project_dir, config):
     """
     results = {}
     overall_success = True
+
+    # Get version from config
+    version = config.get('version', 'nightly')
 
     # Get specrefs config
     specrefs_config = config.get('specrefs', {})
@@ -963,7 +966,7 @@ def run_checks(project_dir, config):
                             break
 
                 # Check coverage for this specific tag type
-                found_count, expected_count, missing_items = check_coverage(yaml_path, tag_type, section_exceptions, preset)
+                found_count, expected_count, missing_items = check_coverage(yaml_path, tag_type, section_exceptions, preset, version)
                 total_found += found_count
                 total_expected += expected_count
                 all_missing_items.extend(missing_items)
