@@ -1522,7 +1522,6 @@
   "specs/_features/eip7732/beacon-chain.md::#modified-get_next_sync_committee_indices": "https://github.com/ethereum/consensus-specs/blob/master/specs/_features/eip7732/beacon-chain.md#modified-get_next_sync_committee_indices",
   "specs/_features/eip7732/beacon-chain.md::#new-get_attestation_participation_flag_indices": "https://github.com/ethereum/consensus-specs/blob/master/specs/_features/eip7732/beacon-chain.md#new-get_attestation_participation_flag_indices",
   "specs/_features/eip7732/beacon-chain.md::#new-get_ptc": "https://github.com/ethereum/consensus-specs/blob/master/specs/_features/eip7732/beacon-chain.md#new-get_ptc",
-  "specs/_features/eip7732/beacon-chain.md::#new-get_payload_attesting_indices": "https://github.com/ethereum/consensus-specs/blob/master/specs/_features/eip7732/beacon-chain.md#new-get_payload_attesting_indices",
   "specs/_features/eip7732/beacon-chain.md::#new-get_indexed_payload_attestation": "https://github.com/ethereum/consensus-specs/blob/master/specs/_features/eip7732/beacon-chain.md#new-get_indexed_payload_attestation",
   "specs/_features/eip7732/beacon-chain.md::#beacon-chain-state-transition-function": "https://github.com/ethereum/consensus-specs/blob/master/specs/_features/eip7732/beacon-chain.md#beacon-chain-state-transition-function",
   "specs/_features/eip7732/beacon-chain.md::#modified-process_slot": "https://github.com/ethereum/consensus-specs/blob/master/specs/_features/eip7732/beacon-chain.md#modified-process_slot",
