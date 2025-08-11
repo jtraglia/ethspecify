@@ -822,6 +822,196 @@ def extract_spec_tags_from_yaml(yaml_file, tag_type=None):
     return tag_types_found, pairs
 
 
+def generate_specrefs_from_files(files_with_spec_tags, project_dir):
+    """
+    Generate specrefs data from files containing spec tags.
+    Returns a dict with spec tag info and their source locations.
+    """
+    specrefs = {}
+
+    for file_path in files_with_spec_tags:
+        try:
+            with open(file_path, 'r', encoding='utf-8') as f:
+                content = f.read()
+
+            # Find all spec tags in the file
+            spec_tag_pattern = r'<spec\s+([^>]+?)(?:\s*/>|>)'
+            matches = re.finditer(spec_tag_pattern, content)
+
+            for match in matches:
+                tag_attrs_str = match.group(1)
+                attrs = extract_attributes(f"<spec {tag_attrs_str}>")
+
+                # Determine the spec type and name
+                spec_type = None
+                spec_name = None
+                fork = attrs.get('fork', None)
+
+                # Check each possible spec attribute
+                for attr_name in ['fn', 'function', 'constant_var', 'config_var',
+                                  'preset_var', 'ssz_object', 'dataclass', 'custom_type']:
+                    if attr_name in attrs:
+                        spec_type = attr_name
+                        spec_name = attrs[attr_name]
+                        break
+
+                if spec_type and spec_name:
+                    # Create a unique key for this spec reference
+                    key = f"{spec_type}.{spec_name}"
+                    if fork:
+                        key += f"#{fork}"
+
+                    if key not in specrefs:
+                        specrefs[key] = {
+                            'name': spec_name,
+                            'type': spec_type,
+                            'fork': fork,
+                            'sources': []
+                        }
+
+                    # Add this source location
+                    rel_path = os.path.relpath(file_path, project_dir)
+
+                    # Get line number of the match
+                    lines_before = content[:match.start()].count('\n')
+                    line_num = lines_before + 1
+
+                    specrefs[key]['sources'].append({
+                        'file': rel_path,
+                        'line': line_num
+                    })
+
+        except (IOError, UnicodeDecodeError):
+            continue
+
+    return specrefs
+
+
+def process_generated_specrefs(specrefs, exceptions, version):
+    """
+    Process the generated specrefs and check coverage.
+    Returns (success, results)
+    """
+    results = {}
+    overall_success = True
+
+    # Group specrefs by type for coverage checking
+    specrefs_by_type = {}
+    for _, data in specrefs.items():
+        spec_type = data['type']
+        if spec_type not in specrefs_by_type:
+            specrefs_by_type[spec_type] = []
+        specrefs_by_type[spec_type].append(data)
+
+    # Map spec types to history keys
+    type_to_history_key = {
+        'fn': 'functions',
+        'function': 'functions',
+        'constant_var': 'constant_vars',
+        'config_var': 'config_vars',
+        'preset_var': 'preset_vars',
+        'ssz_object': 'ssz_objects',
+        'dataclass': 'dataclasses',
+        'custom_type': 'custom_types'
+    }
+
+    # Map to exception keys
+    type_to_exception_key = {
+        'fn': 'functions',
+        'function': 'functions',
+        'constant_var': 'constants',
+        'config_var': 'configs',
+        'preset_var': 'presets',
+        'ssz_object': 'ssz_objects',
+        'dataclass': 'dataclasses',
+        'custom_type': 'custom_types'
+    }
+
+    # Get spec history for coverage checking
+    history = get_spec_item_history("mainnet", version)
+
+    # Check coverage for each type
+    total_found = 0
+    total_expected = 0
+    all_missing = []
+
+    for spec_type, items in specrefs_by_type.items():
+        history_key = type_to_history_key.get(spec_type, spec_type)
+        exception_key = type_to_exception_key.get(spec_type, spec_type)
+
+        # Get exceptions for this type - handle both singular and plural keys
+        type_exceptions = []
+        if exception_key in exceptions:
+            type_exceptions = exceptions[exception_key]
+        # Also check plural forms
+        elif exception_key + 's' in exceptions:
+            type_exceptions = exceptions[exception_key + 's']
+        # Check if singular form exists when we have plural
+        elif exception_key.endswith('s') and exception_key[:-1] in exceptions:
+            type_exceptions = exceptions[exception_key[:-1]]
+
+        # Build set of what we found
+        found_items = set()
+        for item in items:
+            if item['fork']:
+                found_items.add(f"{item['name']}#{item['fork']}")
+            else:
+                # If no fork specified, we need to check all forks
+                if history_key in history and item['name'] in history[history_key]:
+                    for fork in history[history_key][item['name']]:
+                        found_items.add(f"{item['name']}#{fork}")
+
+        # Check what's expected
+        if history_key in history:
+            for item_name, forks in history[history_key].items():
+                for fork in forks:
+                    expected_key = f"{item_name}#{fork}"
+                    total_expected += 1
+
+                    # Check if excepted
+                    if is_excepted(item_name, fork, type_exceptions):
+                        total_found += 1
+                        continue
+
+                    if expected_key in found_items:
+                        total_found += 1
+                    else:
+                        # Use the proper type prefix for the missing item
+                        type_prefix_map = {
+                            'functions': 'functions',
+                            'constant_vars': 'constants',
+                            'config_vars': 'configs',
+                            'preset_vars': 'presets',
+                            'ssz_objects': 'ssz_objects',
+                            'dataclasses': 'dataclasses',
+                            'custom_types': 'custom_types'
+                        }
+                        prefix = type_prefix_map.get(history_key, history_key)
+                        all_missing.append(f"{prefix}.{expected_key}")
+
+    # Count total spec references found
+    total_refs = len(specrefs)
+
+    # Store results
+    results['Project Coverage'] = {
+        'source_files': {
+            'valid': total_refs,
+            'total': total_refs,
+            'errors': []
+        },
+        'coverage': {
+            'found': total_found,
+            'expected': total_expected,
+            'missing': all_missing
+        }
+    }
+
+    if all_missing:
+        overall_success = False
+
+    return overall_success, results
+
+
 def check_coverage(yaml_file, tag_type, exceptions, preset="mainnet", version="nightly"):
     """
     Check that all spec items from ethspecify have corresponding tags in the YAML file.
@@ -892,10 +1082,35 @@ def run_checks(project_dir, config):
         specrefs_files = specrefs_config.get('files', [])
         exceptions = specrefs_config.get('exceptions', {})
 
+    # If no files specified, search the whole project for spec tags
     if not specrefs_files:
-        print("Error: No specrefs files specified in .ethspecify.yml")
-        print("Please add a 'specrefs:' section with 'files:' listing the files to check")
-        return False, {}
+        print("No specific files configured, searching entire project for spec tags...")
+
+        # Determine search root - configurable in specrefs section
+        if 'search_root' in specrefs_config:
+            # Use configured search_root (relative to project_dir)
+            search_root_rel = specrefs_config['search_root']
+            search_root = os.path.join(project_dir, search_root_rel) if not os.path.isabs(search_root_rel) else search_root_rel
+            search_root = os.path.abspath(search_root)
+        else:
+            # Default behavior: if we're in a specrefs directory, search in the parent directory
+            search_root = os.path.dirname(project_dir) if os.path.basename(project_dir) == 'specrefs' else project_dir
+
+        print(f"Searching for spec tags in: {search_root}")
+
+        # Use grep to find all files containing spec tags
+        files_with_spec_tags = grep(search_root, r'<spec\b[^>]*>', [])
+
+        if not files_with_spec_tags:
+            print(f"No files with spec tags found in the project")
+            return True, {}
+
+        # Generate in-memory specrefs data from the found spec tags
+        all_specrefs = generate_specrefs_from_files(files_with_spec_tags, search_root)
+
+        # Process the generated specrefs
+        return process_generated_specrefs(all_specrefs, exceptions, version)
+
 
     # Map tag types to exception keys (support both singular and plural)
     exception_key_map = {
@@ -928,7 +1143,16 @@ def run_checks(project_dir, config):
         # Process each tag type found in the file
         if not tag_types_found:
             # No spec tags found, still check source files
-            valid_count, total_count, source_errors = check_source_files(yaml_path, os.path.dirname(project_dir), [])
+            # Determine source root - use search_root if configured, otherwise use default behavior
+            if 'search_root' in specrefs_config:
+                search_root_rel = specrefs_config['search_root']
+                source_root = os.path.join(project_dir, search_root_rel) if not os.path.isabs(search_root_rel) else search_root_rel
+                source_root = os.path.abspath(source_root)
+            else:
+                # Default behavior: parent directory
+                source_root = os.path.dirname(project_dir)
+
+            valid_count, total_count, source_errors = check_source_files(yaml_path, source_root, [])
 
             # Store results using filename as section name
             section_name = filename.replace('.yml', '').replace('-', ' ').title()
@@ -980,7 +1204,16 @@ def run_checks(project_dir, config):
                         if key in exceptions:
                             all_exceptions.extend(exceptions[key])
 
-            valid_count, total_count, source_errors = check_source_files(yaml_path, os.path.dirname(project_dir), all_exceptions)
+            # Determine source root - use search_root if configured, otherwise use default behavior
+            if 'search_root' in specrefs_config:
+                search_root_rel = specrefs_config['search_root']
+                source_root = os.path.join(project_dir, search_root_rel) if not os.path.isabs(search_root_rel) else search_root_rel
+                source_root = os.path.abspath(source_root)
+            else:
+                # Default behavior: parent directory
+                source_root = os.path.dirname(project_dir)
+
+            valid_count, total_count, source_errors = check_source_files(yaml_path, source_root, all_exceptions)
 
             # Store results using filename as section name
             section_name = filename.replace('.yml', '').replace('-', ' ').title()

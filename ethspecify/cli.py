@@ -89,30 +89,36 @@ def check(args):
     total_source_files = {"valid": 0, "total": 0}
 
     for section_name, section_results in results.items():
-        # Determine the type prefix from section name
-        if "Config Variables" in section_name:
-            type_prefix = "config_var"
-        elif "Preset Variables" in section_name:
-            type_prefix = "preset_var"
-        elif "Ssz Objects" in section_name:
-            type_prefix = "ssz_object"
-        elif "Dataclasses" in section_name:
-            type_prefix = "dataclass"
-        else:
-            type_prefix = section_name.lower().replace(" ", "_")
-
         # Collect source file errors
         source = section_results['source_files']
         total_source_files["valid"] += source["valid"]
         total_source_files["total"] += source["total"]
         all_errors.extend(source["errors"])
 
-        # Collect missing items with type prefix
+        # Collect missing items
         coverage = section_results['coverage']
         total_coverage["found"] += coverage["found"]
         total_coverage["expected"] += coverage["expected"]
-        for missing in coverage['missing']:
-            all_missing.append(f"MISSING: {type_prefix}.{missing}")
+
+        # For Project Coverage, items already have the proper prefix
+        if section_name == "Project Coverage":
+            for missing in coverage['missing']:
+                all_missing.append(f"MISSING: {missing}")
+        else:
+            # Determine the type prefix from section name for YAML-based checks
+            if "Config Variables" in section_name:
+                type_prefix = "config_var"
+            elif "Preset Variables" in section_name:
+                type_prefix = "preset_var"
+            elif "Ssz Objects" in section_name:
+                type_prefix = "ssz_object"
+            elif "Dataclasses" in section_name:
+                type_prefix = "dataclass"
+            else:
+                type_prefix = section_name.lower().replace(" ", "_")
+
+            for missing in coverage['missing']:
+                all_missing.append(f"MISSING: {type_prefix}.{missing}")
 
     # Display only errors and missing items
     for error in all_errors:
