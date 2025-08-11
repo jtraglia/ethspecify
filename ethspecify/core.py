@@ -1080,7 +1080,18 @@ def run_checks(project_dir, config):
     else:
         # New format: specrefs: { files: [...], exceptions: {...} }
         specrefs_files = specrefs_config.get('files', [])
-        exceptions = specrefs_config.get('exceptions', {})
+
+        # Support exceptions in either specrefs section or root, but not both
+        specrefs_exceptions = specrefs_config.get('exceptions', {})
+        root_exceptions = config.get('exceptions', {})
+
+        if specrefs_exceptions and root_exceptions:
+            print("Warning: Exceptions found in both root and specrefs sections. Using specrefs exceptions.")
+            exceptions = specrefs_exceptions
+        elif specrefs_exceptions:
+            exceptions = specrefs_exceptions
+        else:
+            exceptions = root_exceptions
 
     # If no files specified, search the whole project for spec tags
     if not specrefs_files:
