@@ -26,13 +26,14 @@ def process(args):
 def list_tags(args):
     """List all available tags with their fork history."""
     preset = getattr(args, 'preset', 'mainnet')
-    return _list_tags_with_history(args, preset)
+    version = getattr(args, 'version', 'nightly')
+    return _list_tags_with_history(args, preset, version)
 
 
-def _list_tags_with_history(args, preset):
+def _list_tags_with_history(args, preset, version):
     """List all tags with their fork history."""
     try:
-        history = get_spec_item_history(preset)
+        history = get_spec_item_history(preset, version)
     except ValueError as e:
         print(f"Error: {e}")
         return 1
@@ -204,6 +205,12 @@ def main():
         type=str,
         help="Filter tags by search term",
         default=None,
+    )
+    list_tags_parser.add_argument(
+        "--version",
+        type=str,
+        help="Specification version to use (default: nightly)",
+        default="nightly",
     )
 
     # Parser for 'check' command
