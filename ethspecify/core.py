@@ -232,10 +232,16 @@ def get_spec(attributes, preset, fork, version="nightly"):
             + " = "
             + pyspec[preset][fork]["custom_types"][attributes["custom_type"]]
         )
-    elif "ssz_object" in attributes:
+    elif "ssz_object" in attributes or "container" in attributes:
         if spec is not None:
             raise Exception(f"Tag can only specify one spec item")
-        spec = pyspec[preset][fork]["ssz_objects"][attributes["ssz_object"]]
+        if "ssz_object" in attributes and "container" in attributes:
+            raise Exception(f"cannot contain 'ssz_object' and 'container'")
+        if "ssz_object" in attributes:
+            object_name = attributes["ssz_object"]
+        else:
+            object_name = attributes["container"]
+        spec = pyspec[preset][fork]["ssz_objects"][object_name]
     elif "dataclass" in attributes:
         if spec is not None:
             raise Exception(f"Tag can only specify one spec item")
@@ -614,6 +620,7 @@ def check_source_files(yaml_file, project_root, exceptions=None):
                                 'config_var': 'configs',
                                 'preset_var': 'presets',
                                 'ssz_object': 'ssz_objects',
+                                'container': 'ssz_objects',
                                 'dataclass': 'dataclasses',
                                 'custom_type': 'custom_types'
                             }
@@ -758,7 +765,7 @@ def extract_spec_tags_from_yaml(yaml_file, tag_type=None):
 
     # Known tag type attributes
     tag_attributes = ['fn', 'function', 'constant_var', 'config_var', 'preset_var',
-                      'ssz_object', 'dataclass', 'custom_type']
+                      'ssz_object', 'container', 'dataclass', 'custom_type']
 
     try:
         with open(yaml_file, 'r') as f:
@@ -807,6 +814,9 @@ def extract_spec_tags_from_yaml(yaml_file, tag_type=None):
                         # Normalize function to fn
                         if found_tag_type == 'function':
                             found_tag_type = 'fn'
+                        # Normalize container to ssz_object
+                        if found_tag_type == 'container':
+                            found_tag_type = 'ssz_object'
                         break
 
                 if found_tag_type and 'fork' in attrs:
@@ -849,13 +859,16 @@ def generate_specrefs_from_files(files_with_spec_tags, project_dir):
 
                 # Check each possible spec attribute
                 for attr_name in ['fn', 'function', 'constant_var', 'config_var',
-                                  'preset_var', 'ssz_object', 'dataclass', 'custom_type']:
+                                  'preset_var', 'ssz_object', 'container', 'dataclass', 'custom_type']:
                     if attr_name in attrs:
                         spec_type = attr_name
                         spec_name = attrs[attr_name]
                         break
 
                 if spec_type and spec_name:
+                    # Normalize container to ssz_object for consistency
+                    if spec_type == 'container':
+                        spec_type = 'ssz_object'
                     # Create a unique key for this spec reference
                     key = f"{spec_type}.{spec_name}"
                     if fork:
@@ -911,6 +924,7 @@ def process_generated_specrefs(specrefs, exceptions, version):
         'config_var': 'config_vars',
         'preset_var': 'preset_vars',
         'ssz_object': 'ssz_objects',
+        'container': 'ssz_objects',
         'dataclass': 'dataclasses',
         'custom_type': 'custom_types'
     }
@@ -923,6 +937,7 @@ def process_generated_specrefs(specrefs, exceptions, version):
         'config_var': 'configs',
         'preset_var': 'presets',
         'ssz_object': 'ssz_objects',
+        'container': 'ssz_objects',
         'dataclass': 'dataclasses',
         'custom_type': 'custom_types'
     }
@@ -1020,6 +1035,7 @@ def check_coverage(yaml_file, tag_type, exceptions, preset="mainnet", version="n
     # Map tag types to history keys
     history_key_map = {
         'ssz_object': 'ssz_objects',
+        'container': 'ssz_objects',
         'config_var': 'config_vars',
         'preset_var': 'preset_vars',
         'dataclass': 'dataclasses',
@@ -1126,6 +1142,7 @@ def run_checks(project_dir, config):
     # Map tag types to exception keys (support both singular and plural)
     exception_key_map = {
         'ssz_object': ['ssz_objects', 'ssz_object'],
+        'container': ['ssz_objects', 'ssz_object'],
         'config_var': ['configs', 'config_variables', 'config_var'],
         'preset_var': ['presets', 'preset_variables', 'preset_var'],
         'dataclass': ['dataclasses', 'dataclass'],
