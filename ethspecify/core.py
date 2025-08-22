@@ -964,6 +964,14 @@ def process_generated_specrefs(specrefs, exceptions, version):
         # Check if singular form exists when we have plural
         elif exception_key.endswith('s') and exception_key[:-1] in exceptions:
             type_exceptions = exceptions[exception_key[:-1]]
+        
+        # Special handling for ssz_objects/containers
+        if spec_type in ['ssz_object', 'container'] and not type_exceptions:
+            # Check for 'containers' as an alternative key
+            if 'containers' in exceptions:
+                type_exceptions = exceptions['containers']
+            elif 'container' in exceptions:
+                type_exceptions = exceptions['container']
 
         # Build set of what we found
         found_items = set()
@@ -1141,8 +1149,8 @@ def run_checks(project_dir, config):
 
     # Map tag types to exception keys (support both singular and plural)
     exception_key_map = {
-        'ssz_object': ['ssz_objects', 'ssz_object'],
-        'container': ['ssz_objects', 'ssz_object'],
+        'ssz_object': ['ssz_objects', 'ssz_object', 'containers', 'container'],
+        'container': ['ssz_objects', 'ssz_object', 'containers', 'container'],
         'config_var': ['configs', 'config_variables', 'config_var'],
         'preset_var': ['presets', 'preset_variables', 'preset_var'],
         'dataclass': ['dataclasses', 'dataclass'],
