@@ -32,7 +32,7 @@ jobs:
       - name: Build Pyspec JSON
         run: |
           cd consensus-specs
-          make pyspec
+          make _pyspec
           cp pyspec.json ../pyspec/nightly/pyspec.json
 
       - name: Commit and Push Changes
