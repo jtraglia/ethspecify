@@ -12,7 +12,7 @@ When that happens, they can update the implementations appropriately.
 ### Installation
 
 ```
-python3 -mpip install ethspecify
+pipx install ethspecify
 ```
 
 ### Adding Spec Tags
