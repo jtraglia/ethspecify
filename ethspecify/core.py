@@ -731,19 +731,23 @@ def check_source_files(yaml_file, project_root, exceptions=None):
         if not spec_ref and 'name' in item:
             spec_ref = item['name']
 
+        # Extract item name and fork for exception checking
+        item_name_for_exception = None
+        fork_for_exception = None
+        if spec_ref and '#' in spec_ref and '.' in spec_ref:
+            # Format: "functions.item_name#fork"
+            _, item_with_fork = spec_ref.split('.', 1)
+            if '#' in item_with_fork:
+                item_name_for_exception, fork_for_exception = item_with_fork.split('#', 1)
+
         # Check if sources list is empty
         if not item['sources']:
             if spec_ref:
-                # Extract item name and fork from spec_ref for exception checking
-                if '#' in spec_ref and '.' in spec_ref:
-                    # Format: "functions.item_name#fork"
-                    _, item_with_fork = spec_ref.split('.', 1)
-                    if '#' in item_with_fork:
-                        item_name, fork = item_with_fork.split('#', 1)
-                        # Check if this item is in exceptions
-                        if is_excepted(item_name, fork, exceptions):
-                            total_count += 1
-                            continue
+                # Check if this item is in exceptions
+                if item_name_for_exception and fork_for_exception:
+                    if is_excepted(item_name_for_exception, fork_for_exception, exceptions):
+                        total_count += 1
+                        continue
 
                 errors.append(f"EMPTY SOURCES: {spec_ref}")
             else:
@@ -752,6 +756,13 @@ def check_source_files(yaml_file, project_root, exceptions=None):
                 errors.append(f"EMPTY SOURCES: No sources defined ({item_name})")
             total_count += 1
             continue
+
+        # Check if item has non-empty sources but is in exceptions
+        if item_name_for_exception and fork_for_exception:
+            if is_excepted(item_name_for_exception, fork_for_exception, exceptions):
+                errors.append(f"EXCEPTION CONFLICT: {spec_ref} has a specref")
+                total_count += 1
+                continue
 
         for source in item['sources']:
             # All sources now use the standardized dict format with file and optional search
