@@ -576,6 +576,99 @@ def extract_attributes(tag):
     return dict(attr_pattern.findall(tag))
 
 
+def sort_specref_yaml(yaml_file):
+    """
+    Sort specref entries in a YAML file by their name field.
+    Preserves formatting and adds single blank lines between entries.
+    """
+    if not os.path.exists(yaml_file):
+        return False
+
+    try:
+        with open(yaml_file, 'r') as f:
+            content_str = f.read()
+
+        # Try to fix common YAML issues with unquoted search strings containing colons
+        # This is the same fix used in check_source_files
+        content_str = re.sub(r'(\s+search:\s+)([^"\n]+:)(\s*$)', r'\1"\2"\3', content_str, flags=re.MULTILINE)
+
+        try:
+            content = yaml.safe_load(content_str)
+        except yaml.YAMLError:
+            # Fall back to FullLoader if safe_load fails
+            content = yaml.load(content_str, Loader=yaml.FullLoader)
+
+        if not content:
+            return False
+
+        # Handle both array of objects and single object formats
+        if isinstance(content, list):
+            # Sort the list by 'name' field if it exists
+            sorted_content = sorted(content, key=lambda x: x.get('name', '') if isinstance(x, dict) else str(x))
+
+            # Custom YAML writing to preserve formatting
+            output_lines = []
+            for i, item in enumerate(sorted_content):
+                if i > 0:
+                    # Add a single blank line between entries
+                    output_lines.append("")
+
+                # Start each entry with a dash
+                first_line = True
+                for key, value in item.items():
+                    if first_line:
+                        prefix = "- "
+                        first_line = False
+                    else:
+                        prefix = "  "
+
+                    if key == 'spec':
+                        # Preserve spec content as-is, using literal style
+                        output_lines.append(f"{prefix}{key}: |")
+                        # Indent the spec content - preserve it exactly as-is
+                        spec_lines = value.rstrip().split('\n') if isinstance(value, str) else str(value).rstrip().split('\n')
+                        for spec_line in spec_lines:
+                            output_lines.append(f"    {spec_line}")
+                    elif key == 'sources':
+                        output_lines.append(f"{prefix}{key}:")
+                        if isinstance(value, list):
+                            for source in value:
+                                if isinstance(source, dict):
+                                    output_lines.append(f"    - file: {source.get('file', '')}")
+                                    if 'search' in source:
+                                        # Quote search strings only if they contain colons
+                                        search_val = source['search']
+                                        if ':' in search_val and not (search_val.startswith('"') and search_val.endswith('"')):
+                                            search_val = f'"{search_val}"'
+                                        output_lines.append(f"      search: {search_val}")
+                                    if 'regex' in source:
+                                        output_lines.append(f"      regex: {source['regex']}")
+                                else:
+                                    output_lines.append(f"    - {source}")
+                        else:
+                            output_lines.append("    []")
+                    else:
+                        # Handle other fields - don't escape or modify the value
+                        output_lines.append(f"{prefix}{key}: {value}")
+
+            # Strip trailing whitespace from all lines
+            output_lines = [line.rstrip() for line in output_lines]
+
+            # Write back the sorted content
+            with open(yaml_file, 'w') as f:
+                f.write('\n'.join(output_lines))
+                f.write('\n')  # End file with newline
+
+            return True
+        elif isinstance(content, dict):
+            # If it's a single dict, we can't sort it
+            return False
+    except (yaml.YAMLError, IOError) as e:
+        print(f"Error sorting {yaml_file}: {e}")
+        return False
+
+    return False
+
 def replace_spec_tags(file_path, config=None):
     with open(file_path, 'r') as file:
         content = file.read()
