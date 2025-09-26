@@ -604,7 +604,37 @@ def sort_specref_yaml(yaml_file):
         # Handle both array of objects and single object formats
         if isinstance(content, list):
             # Sort the list by 'name' field if it exists
-            sorted_content = sorted(content, key=lambda x: x.get('name', '') if isinstance(x, dict) else str(x))
+            # Special handling for fork ordering within the same item
+            def sort_key(x):
+                name = x.get('name', '') if isinstance(x, dict) else str(x)
+
+                # Known fork names for ordering
+                forks = ['phase0', 'altair', 'bellatrix', 'capella', 'deneb', 'electra']
+
+                # Check if name contains a # separator (like "slash_validator#phase0")
+                if '#' in name:
+                    base_name, fork = name.rsplit('#', 1)
+                    # Define fork order based on known forks list
+                    fork_lower = fork.lower()
+                    if fork_lower in forks:
+                        fork_order = forks.index(fork_lower)
+                    else:
+                        # Unknown forks go after known ones, sorted alphabetically
+                        fork_order = len(forks)
+                    return (base_name, fork_order, fork)
+                else:
+                    # Check if name ends with a fork name (like "BeaconStatePhase0")
+                    name_lower = name.lower()
+                    for i, fork in enumerate(forks):
+                        if name_lower.endswith(fork):
+                            # Extract base name
+                            base_name = name[:-len(fork)]
+                            return (base_name, i, name)
+
+                    # No fork pattern found, just sort by name
+                    return (name, 0, '')
+
+            sorted_content = sorted(content, key=sort_key)
 
             # Custom YAML writing to preserve formatting
             output_lines = []
@@ -630,23 +660,34 @@ def sort_specref_yaml(yaml_file):
                         for spec_line in spec_lines:
                             output_lines.append(f"    {spec_line}")
                     elif key == 'sources':
-                        output_lines.append(f"{prefix}{key}:")
-                        if isinstance(value, list):
-                            for source in value:
-                                if isinstance(source, dict):
-                                    output_lines.append(f"    - file: {source.get('file', '')}")
-                                    if 'search' in source:
-                                        # Quote search strings only if they contain colons
-                                        search_val = source['search']
-                                        if ':' in search_val and not (search_val.startswith('"') and search_val.endswith('"')):
-                                            search_val = f'"{search_val}"'
-                                        output_lines.append(f"      search: {search_val}")
-                                    if 'regex' in source:
-                                        output_lines.append(f"      regex: {source['regex']}")
-                                else:
-                                    output_lines.append(f"    - {source}")
+                        if isinstance(value, list) and len(value) == 0:
+                            # Keep empty lists on the same line for clarity
+                            output_lines.append(f"{prefix}{key}: []")
                         else:
-                            output_lines.append("    []")
+                            output_lines.append(f"{prefix}{key}:")
+                            if isinstance(value, list):
+                                for source in value:
+                                    if isinstance(source, dict):
+                                        output_lines.append(f"    - file: {source.get('file', '')}")
+                                        if 'search' in source:
+                                            search_val = source['search']
+                                            # Only quote if:
+                                            # 1. Contains a colon followed by space or end of string (YAML mapping issue)
+                                            # 2. Not already quoted
+                                            # 3. Doesn't contain internal quotes (like regex patterns)
+                                            if ((':' in search_val or search_val.endswith(':')) and
+                                                not (search_val.startswith('"') and search_val.endswith('"')) and
+                                                '"' not in search_val):
+                                                # Only quote simple strings with colons, not complex patterns
+                                                if not any(char in search_val for char in ['\\', '*', '|', '[', ']', '(', ')']):
+                                                    search_val = f'"{search_val}"'
+                                            output_lines.append(f"      search: {search_val}")
+                                        if 'regex' in source:
+                                            # Keep boolean values lowercase for consistency
+                                            regex_val = str(source['regex']).lower()
+                                            output_lines.append(f"      regex: {regex_val}")
+                                    else:
+                                        output_lines.append(f"    - {source}")
                     else:
                         # Handle other fields - don't escape or modify the value
                         output_lines.append(f"{prefix}{key}: {value}")
