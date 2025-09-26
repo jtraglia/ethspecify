@@ -11,6 +11,90 @@ import tokenize
 import yaml
 
 
+def validate_exception_items(exceptions, version):
+    """
+    Validate that exception items actually exist in the spec.
+    Raises an exception if any item doesn't exist.
+    """
+    if not exceptions:
+        return
+
+    # Get the pyspec data
+    try:
+        pyspec = get_pyspec(version)
+    except Exception as e:
+        print(f"Warning: Could not validate exceptions - failed to load pyspec: {e}")
+        return
+
+    # Map exception keys to pyspec keys
+    exception_to_pyspec_map = {
+        'functions': 'functions',
+        'fn': 'functions',
+        'constants': 'constant_vars',
+        'constant_variables': 'constant_vars',
+        'constant_var': 'constant_vars',
+        'configs': 'config_vars',
+        'config_variables': 'config_vars',
+        'config_var': 'config_vars',
+        'presets': 'preset_vars',
+        'preset_variables': 'preset_vars',
+        'preset_var': 'preset_vars',
+        'ssz_objects': 'ssz_objects',
+        'containers': 'ssz_objects',
+        'container': 'ssz_objects',
+        'dataclasses': 'dataclasses',
+        'dataclass': 'dataclasses',
+        'custom_types': 'custom_types',
+        'custom_type': 'custom_types'
+    }
+
+    errors = []
+
+    for exception_key, exception_items in exceptions.items():
+        # Get the corresponding pyspec key
+        pyspec_key = exception_to_pyspec_map.get(exception_key)
+        if not pyspec_key:
+            errors.append(f"Unknown exception type: '{exception_key}'")
+            continue
+
+        # Ensure exception_items is a list
+        if not isinstance(exception_items, list):
+            exception_items = [exception_items]
+
+        for item in exception_items:
+            # Parse item#fork format
+            if '#' in item:
+                item_name, fork = item.split('#', 1)
+            else:
+                # If no fork specified, we'll check if it exists in any fork
+                item_name = item
+                fork = None
+
+            # Check if the item exists
+            item_found = False
+            if fork:
+                # Check specific fork
+                if ('mainnet' in pyspec and
+                    fork in pyspec['mainnet'] and
+                    pyspec_key in pyspec['mainnet'][fork] and
+                    item_name in pyspec['mainnet'][fork][pyspec_key]):
+                    item_found = True
+            else:
+                # Check if item exists in any fork
+                if 'mainnet' in pyspec:
+                    for check_fork in pyspec['mainnet']:
+                        if (pyspec_key in pyspec['mainnet'][check_fork] and
+                            item_name in pyspec['mainnet'][check_fork][pyspec_key]):
+                            item_found = True
+                            break
+
+            if not item_found:
+                errors.append(f"invalid key: {exception_key}.{item_name}{"#" + fork if fork else ""}")
+
+    if errors:
+        error_msg = "Invalid exception items in configuration:\n" + "\n".join(f"  - {e}" for e in errors)
+        raise Exception(error_msg)
+
 def load_config(directory=None):
     """
     Load configuration from .ethspecify.yml file in the specified directory.
@@ -25,7 +109,22 @@ def load_config(directory=None):
         try:
             with open(config_path, 'r') as f:
                 config = yaml.safe_load(f)
-                return config if config else {}
+                if not config:
+                    return {}
+
+                # Get version from config, default to 'nightly'
+                version = config.get('version', 'nightly')
+
+                # Validate exceptions in root config
+                if 'exceptions' in config:
+                    validate_exception_items(config['exceptions'], version)
+
+                # Also validate exceptions in specrefs section if present
+                if 'specrefs' in config and isinstance(config['specrefs'], dict):
+                    if 'exceptions' in config['specrefs']:
+                        validate_exception_items(config['specrefs']['exceptions'], version)
+
+                return config
         except (yaml.YAMLError, IOError) as e:
             print(f"Warning: Error reading .ethspecify.yml file: {e}")
             return {}
@@ -964,7 +1063,7 @@ def process_generated_specrefs(specrefs, exceptions, version):
         # Check if singular form exists when we have plural
         elif exception_key.endswith('s') and exception_key[:-1] in exceptions:
             type_exceptions = exceptions[exception_key[:-1]]
-        
+
         # Special handling for ssz_objects/containers
         if spec_type in ['ssz_object', 'container'] and not type_exceptions:
             # Check for 'containers' as an alternative key
