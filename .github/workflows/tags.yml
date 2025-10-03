@@ -15,6 +15,9 @@ jobs:
         with:
           ref: main
 
+      - name: Install the latest version of uv
+        uses: astral-sh/setup-uv@v6
+
       - name: Clone Consensus Specs
         run: |
           git clone https://github.com/ethereum/consensus-specs.git
