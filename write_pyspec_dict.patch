@@ -1,18 +1,18 @@
-diff --git a/setup.py b/setup.py
-index 76a16e261..3194b692f 100644
---- a/setup.py
-+++ b/setup.py
-@@ -83,6 +83,9 @@ def load_config(config_path: Path) -> dict[str, str | list[dict[str, str]]]:
-     return parse_config_vars(config_data)
+diff --git a/pysetup/generate_specs.py b/pysetup/generate_specs.py
+index 0556b9f7f..d5b2529c3 100644
+--- a/pysetup/generate_specs.py
++++ b/pysetup/generate_specs.py
+@@ -52,6 +52,9 @@ from pysetup.spec_builders import spec_builders
+ from pysetup.typing import BuildTarget, SpecObject  # type: ignore[attr-defined]
  
  
 +pyspec = {}
 +
 +
- def build_spec(
-     fork: str,
-     preset_name: str,
-@@ -109,6 +112,13 @@ def build_spec(
+ def get_spec(
+     file_name: Path,
+     preset: dict[str, str],
+@@ -130,6 +133,13 @@ def build_spec(
              spec_object.custom_types | spec_object.preset_dep_custom_types,
          )
  
@@ -26,15 +26,15 @@ index 76a16e261..3194b692f 100644
      return objects_to_spec(preset_name, spec_object, fork, class_objects)
  
  
-@@ -210,6 +220,11 @@ class PySpecCommand(Command):
-                 # `mainnet` is the default spec.
-                 out.write("from . import mainnet as spec  # noqa:F401\n")
+@@ -246,6 +256,11 @@ def generate_fork_specs(
+     if verbose:
+         print(f"  Wrote: {init_file}")
  
-+        with open("pyspec.json", "w") as file:
-+            import json
-+
-+            json.dump(pyspec, file)
++    # Write pyspec dictionary to JSON file
++    import json
++    with open("pyspec.json", "w") as file:
++        json.dump(pyspec, file)
 +
  
- class BuildPyCommand(build_py):
-     """Customize the build command to run the spec-builder on setup.py build"""
+ def main() -> int:
+     """Main entry point for the spec generation script."""
