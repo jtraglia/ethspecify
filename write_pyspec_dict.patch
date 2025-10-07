@@ -1,37 +1,45 @@
 diff --git a/pysetup/generate_specs.py b/pysetup/generate_specs.py
-index 0556b9f7f..d5b2529c3 100644
+index bcfe1d519..2222b854e 100644
 --- a/pysetup/generate_specs.py
 +++ b/pysetup/generate_specs.py
-@@ -52,6 +52,9 @@ from pysetup.spec_builders import spec_builders
- from pysetup.typing import BuildTarget, SpecObject  # type: ignore[attr-defined]
+@@ -39,6 +39,8 @@ except ImportError:
+     print("Run: uv sync --all-extras", file=sys.stderr)
+     sys.exit(1)
  
++import json
++
+ from pysetup.constants import PHASE0
+ from pysetup.helpers import (
+     combine_spec_objects,
+@@ -52,6 +54,8 @@ from pysetup.md_to_spec import MarkdownToSpec
+ from pysetup.spec_builders import spec_builders
+ from pysetup.typing import BuildTarget, SpecObject  # type: ignore[attr-defined]
  
 +pyspec = {}
 +
-+
+ 
  def get_spec(
      file_name: Path,
-     preset: dict[str, str],
-@@ -130,6 +133,13 @@ def build_spec(
-             spec_object.custom_types | spec_object.preset_dep_custom_types,
-         )
- 
+@@ -119,6 +123,14 @@ def build_spec(
+     spec_object = all_specs[0]
+     for value in all_specs[1:]:
+         spec_object = combine_spec_objects(spec_object, value)
++
 +    if preset_name not in pyspec:
 +        pyspec[preset_name] = {}
 +    if fork not in pyspec[preset_name]:
 +        pyspec[preset_name][fork] = {}
 +    for key, value in spec_object._asdict().items():
-+        pyspec[preset_name][fork][key] = value
++        pyspec[preset_name][fork][key] = value.copy()
 +
-     return objects_to_spec(preset_name, spec_object, fork, class_objects)
+     spec_object = finalized_spec_object(spec_object)
  
- 
-@@ -246,6 +256,11 @@ def generate_fork_specs(
+     class_objects = {**spec_object.ssz_objects, **spec_object.dataclasses}
+@@ -248,6 +260,10 @@ def generate_fork_specs(
      if verbose:
          print(f"  Wrote: {init_file}")
  
 +    # Write pyspec dictionary to JSON file
-+    import json
 +    with open("pyspec.json", "w") as file:
 +        json.dump(pyspec, file)
 +
