@@ -7,7 +7,7 @@ will also help auditors verify that the client implementations match the specifi
 this is configured as a CI check which notifies client developers when the specification changes.
 When that happens, they can update the implementations appropriately.
 
-## Getting Started
+## Getting started
 
 ### Installation
 
@@ -15,126 +15,180 @@ When that happens, they can update the implementations appropriately.
 pipx install ethspecify
 ```
 
-### Adding Spec Tags
+### Initialize specrefs
 
-In your client, add HTML tags like this:
-
-```
-/*
- * <spec fn="is_fully_withdrawable_validator" fork="deneb" />
- */
-```
+From the root of the client source directory, initialize a directory for specrefs:
 
 ```
-/*
- * <spec ssz_object="BeaconState" fork="electra" style="diff" />
- */
+$ ethspecify init v1.6.0-beta.0
+Initializing specrefs directory: v1.6.0-beta.0
+Successfully created specrefs directory at: specrefs
 ```
 
-### Populating Spec Tags
+This creates a `specrefs` directory with `.ethspecify.yml` and YAML files for each spec category
+(constants, configs, presets, functions, containers, dataclasses, types).
 
-Then, navigate to your codebase and run `ethspecify`:
+### Map sources
 
-```
-ethspecify
-```
+Edit the YAML files to add sources for where each spec item is implemented.
 
-## Specification Options
+If it's the entire file:
 
-### Version
-
-This attribute specifies which version of the consensus specifications to use. Default is `nightly`.
-
-- `nightly` (default) - Uses the latest nightly build from the master branch
-- `v1.6.0-alpha.2`, `v1.6.0-alpha.3`, etc. - Uses a specific tagged release version
-
-Example:
-```
-/*
- * <spec fn="apply_deposit" fork="electra" version="v1.6.0-alpha.3" />
- */
+```yaml
+- name: BlobParameters
+  sources:
+    - file: ethereum/spec/src/main/java/tech/pegasys/teku/spec/logic/versions/fulu/helpers/BlobParameters.java
+  spec: |
+    <spec dataclass="BlobParameters" fork="fulu" hash="a4575aa8">
+    class BlobParameters:
+        epoch: Epoch
+        max_blobs_per_block: uint64
+    </spec>
 ```
 
-### Fork
+If it's multiple entire files:
 
-This attribute can be any of the [executable
-specifications](https://github.com/ethereum/consensus-specs/blob/e6bddd966214a19d2b97199bbe3c02577a22a8b4/Makefile#L3-L15)
-in the consensus-specs. At the time of writing, these are: phase0, altair, bellatrix, capella,
-deneb, electra, fulu, whisk, eip6800, and eip7732.
+```yaml
+- name: BlobsBundleDeneb
+  sources:
+    - file: ethereum/spec/src/main/java/tech/pegasys/teku/spec/datastructures/execution/BlobsBundle.java
+    - file: ethereum/spec/src/main/java/tech/pegasys/teku/spec/datastructures/builder/BlobsBundleSchema.java
+    - file: ethereum/spec/src/main/java/tech/pegasys/teku/spec/datastructures/builder/versions/deneb/BlobsBundleDeneb.java
+    - file: ethereum/spec/src/main/java/tech/pegasys/teku/spec/datastructures/builder/versions/deneb/BlobsBundleSchemaDeneb.java
+  spec: |
+    <spec dataclass="BlobsBundle" fork="deneb" hash="8d6e7be6">
+    class BlobsBundle(object):
+        commitments: List[KZGCommitment, MAX_BLOB_COMMITMENTS_PER_BLOCK]
+        proofs: List[KZGProof, MAX_BLOB_COMMITMENTS_PER_BLOCK]
+        blobs: List[Blob, MAX_BLOB_COMMITMENTS_PER_BLOCK]
+    </spec>
+```
 
-### Style
+If it's a specific part of a file:
+
+```yaml
+- name: EFFECTIVE_BALANCE_INCREMENT
+  sources:
+    - file: ethereum/spec/src/main/resources/tech/pegasys/teku/spec/config/presets/mainnet/phase0.yaml
+      search: "EFFECTIVE_BALANCE_INCREMENT:"
+  spec: |
+    <spec preset_var="EFFECTIVE_BALANCE_INCREMENT" fork="phase0" hash="23dfe52c">
+    EFFECTIVE_BALANCE_INCREMENT: Gwei = 1000000000
+    </spec>
+```
+
+You can also use regex in the searches if that is necessary:
+
+```yaml
+- name: ATTESTATION_DUE_BPS
+  sources:
+    - file: ethereum/spec/src/main/resources/tech/pegasys/teku/spec/config/configs/mainnet.yaml
+      search: "^ATTESTATION_DUE_BPS:"
+      regex: true
+  spec: |
+    <spec config_var="ATTESTATION_DUE_BPS" fork="phase0" hash="929dd1c9">
+    ATTESTATION_DUE_BPS: uint64 = 3333
+    </spec>
+```
+
+### Check specrefs
+
+Run the check command in CI to verify all spec items are properly mapped:
+
+```
+$ ethspecify check --path=specrefs
+MISSING: constants.BLS_MODULUS#deneb
+```
+
+### Add exceptions
+
+Some spec items may not be implemented in your client. Add them to the exceptions list in
+`.ethspecify.yml`:
+
+```yaml
+specrefs:
+  files:
+    - containers.yml
+    - functions.yml
+    # ...
+
+exceptions:
+  containers:
+    # Not implemented
+    - compute_matrix#fulu
+
+  functions:
+    # No light client support
+    - is_valid_light_client_header
+    - process_light_client_update
+
+```
+
+## Style Options
 
 This attribute can be used to change how the specification content is shown.
 
-#### `hash` (default)
+### `hash` (default)
 
 This style adds a hash of the specification content to the spec tag, without showing the content.
 
 ```
-/*
- * <spec fn="apply_deposit" fork="electra" hash="c723ce7b" />
- */
+<spec fn="apply_deposit" fork="electra" hash="c723ce7b" />
 ```
 
 > [!NOTE]
 > The hash is the first 8 characters of the specification content's SHA256 digest.
 
-#### `full`
+### `full`
 
 This style displays the whole content of this specification item, including comments.
 
 ```
-/*
- * <spec fn="is_fully_withdrawable_validator" fork="deneb" style="full">
- * def is_fully_withdrawable_validator(validator: Validator, balance: Gwei, epoch: Epoch) -> bool:
- *     """
- *     Check if ``validator`` is fully withdrawable.
- *     """
- *     return (
- *         has_eth1_withdrawal_credential(validator)
- *         and validator.withdrawable_epoch <= epoch
- *         and balance > 0
- *     )
- * </spec>
- */
+<spec fn="is_fully_withdrawable_validator" fork="deneb" style="full">
+def is_fully_withdrawable_validator(validator: Validator, balance: Gwei, epoch: Epoch) -> bool:
+    """
+    Check if ``validator`` is fully withdrawable.
+    """
+    return (
+        has_eth1_withdrawal_credential(validator)
+        and validator.withdrawable_epoch <= epoch
+        and balance > 0
+    )
+</spec>
 ```
 
-#### `link`
+### `link`
 
 This style displays a GitHub link to the specification item.
 
 ```
-/*
- * <spec fn="apply_pending_deposit" fork="electra" style="link" hash="83ee9126">
- * https://github.com/ethereum/consensus-specs/blob/dev/specs/electra/beacon-chain.md#new-apply_pending_deposit
- * </spec>
- */
+<spec fn="apply_pending_deposit" fork="electra" style="link" hash="83ee9126">
+https://github.com/ethereum/consensus-specs/blob/dev/specs/electra/beacon-chain.md#new-apply_pending_deposit
+</spec>
 ```
 
-#### `diff`
+### `diff`
 
 This style displays a diff with the previous fork's version of the specification.
 
 ```
-/*
- * <spec ssz_object="BeaconState" fork="electra" style="diff">
- * --- deneb
- * +++ electra
- * @@ -27,3 +27,12 @@
- *      next_withdrawal_index: WithdrawalIndex
- *      next_withdrawal_validator_index: ValidatorIndex
- *      historical_summaries: List[HistoricalSummary, HISTORICAL_ROOTS_LIMIT]
- * +    deposit_requests_start_index: uint64
- * +    deposit_balance_to_consume: Gwei
- * +    exit_balance_to_consume: Gwei
- * +    earliest_exit_epoch: Epoch
- * +    consolidation_balance_to_consume: Gwei
- * +    earliest_consolidation_epoch: Epoch
- * +    pending_deposits: List[PendingDeposit, PENDING_DEPOSITS_LIMIT]
- * +    pending_partial_withdrawals: List[PendingPartialWithdrawal, PENDING_PARTIAL_WITHDRAWALS_LIMIT]
- * +    pending_consolidations: List[PendingConsolidation, PENDING_CONSOLIDATIONS_LIMIT]
- * </spec>
- */
+<spec ssz_object="BeaconState" fork="electra" style="diff">
+--- deneb
++++ electra
+@@ -27,3 +27,12 @@
+     next_withdrawal_index: WithdrawalIndex
+     next_withdrawal_validator_index: ValidatorIndex
+     historical_summaries: List[HistoricalSummary, HISTORICAL_ROOTS_LIMIT]
++    deposit_requests_start_index: uint64
++    deposit_balance_to_consume: Gwei
++    exit_balance_to_consume: Gwei
++    earliest_exit_epoch: Epoch
++    consolidation_balance_to_consume: Gwei
++    earliest_consolidation_epoch: Epoch
++    pending_deposits: List[PendingDeposit, PENDING_DEPOSITS_LIMIT]
++    pending_partial_withdrawals: List[PendingPartialWithdrawal, PENDING_PARTIAL_WITHDRAWALS_LIMIT]
++    pending_consolidations: List[PendingConsolidation, PENDING_CONSOLIDATIONS_LIMIT]
+</spec>
 ```
 
 > [!NOTE]
@@ -144,182 +198,15 @@ This style displays a diff with the previous fork's version of the specification
 This can be used with any specification item, like functions too:
 
 ```
-/*
- * <spec fn="is_eligible_for_activation_queue" fork="electra" style="diff">
- * --- phase0
- * +++ electra
- * @@ -4,5 +4,5 @@
- *      """
- *      return (
- *          validator.activation_eligibility_epoch == FAR_FUTURE_EPOCH
- * -        and validator.effective_balance == MAX_EFFECTIVE_BALANCE
- * +        and validator.effective_balance >= MIN_ACTIVATION_BALANCE
- *      )
- * </spec>
- */
+<spec fn="is_eligible_for_activation_queue" fork="electra" style="diff">
+--- phase0
++++ electra
+@@ -4,5 +4,5 @@
+     """
+     return (
+         validator.activation_eligibility_epoch == FAR_FUTURE_EPOCH
+-        and validator.effective_balance == MAX_EFFECTIVE_BALANCE
++        and validator.effective_balance >= MIN_ACTIVATION_BALANCE
+     )
+</spec>
 ```
-
-## Supported Specification Items
-
-### Constants
-
-These are items found in the `Constants` section of the specifications.
-
-```
-/*
- * <spec constant_var="COMPOUNDING_WITHDRAWAL_PREFIX" fork="electra" style="full">
- * COMPOUNDING_WITHDRAWAL_PREFIX: Bytes1 = '0x02'
- * </spec>
- */
-```
-
-### Custom Types
-
-These are items found in the `Custom types` section of the specifications.
-
-```
-/*
- * <spec custom_type="Blob" fork="electra" style="full">
- * Blob = ByteVector[BYTES_PER_FIELD_ELEMENT * FIELD_ELEMENTS_PER_BLOB]
- * </spec>
- */
-```
-
-### Preset Variables
-
-These are items found in the
-[`presets`](https://github.com/ethereum/consensus-specs/tree/dev/presets) directory.
-
-For preset variables, in addition to the `preset_var` attribute, you can specify a `preset`
-attribute: minimal or mainnet.
-
-```
-/*
- * <spec preset="minimal" preset_var="PENDING_CONSOLIDATIONS_LIMIT" fork="electra" style="full">
- * PENDING_CONSOLIDATIONS_LIMIT: uint64 = 64
- * </spec>
- *
- * <spec preset="mainnet" preset_var="PENDING_CONSOLIDATIONS_LIMIT" fork="electra" style="full">
- * PENDING_CONSOLIDATIONS_LIMIT: uint64 = 262144
- * </spec>
- */
-```
-
-It's not strictly necessary to specify the preset attribute. The default preset is mainnet.
-
-```
-/*
- * <spec preset_var="FIELD_ELEMENTS_PER_BLOB" fork="electra" style="full">
- * FIELD_ELEMENTS_PER_BLOB: uint64 = 4096
- * </spec>
- */
-```
-
-### Config Variables
-
-These are items found in the
-[`configs`](https://github.com/ethereum/consensus-specs/tree/dev/presets) directory.
-
-```
-/*
- * <spec config_var="MAX_REQUEST_BLOB_SIDECARS" fork="electra" style="full">
- * MAX_REQUEST_BLOB_SIDECARS = 768
- * </spec>
- */
-```
-
-### SSZ Objects
-
-These are items found in the `Containers` section of the specifications.
-
-```
-/*
- * <spec ssz_object="ConsolidationRequest" fork="electra" style="full">
- * class ConsolidationRequest(Container):
- *     source_address: ExecutionAddress
- *     source_pubkey: BLSPubkey
- *     target_pubkey: BLSPubkey
- * </spec>
- */
-```
-
-### Dataclasses
-
-These are classes with the `@dataclass` decorator.
-
-```
-/*
- * <spec dataclass="PayloadAttributes" fork="electra" style="full">
- * class PayloadAttributes(object):
- *     timestamp: uint64
- *     prev_randao: Bytes32
- *     suggested_fee_recipient: ExecutionAddress
- *     withdrawals: Sequence[Withdrawal]
- *     parent_beacon_block_root: Root  # [New in Deneb:EIP4788]
- * </spec>
- */
-```
-
-### Functions
-
-These are all the functions found in the specifications.
-
-For example, two versions of the same function:
-
-```
-/*
- * <spec fn="is_fully_withdrawable_validator" fork="deneb" style="full">
- * def is_fully_withdrawable_validator(validator: Validator, balance: Gwei, epoch: Epoch) -> bool:
- *     """
- *     Check if ``validator`` is fully withdrawable.
- *     """
- *     return (
- *         has_eth1_withdrawal_credential(validator)
- *         and validator.withdrawable_epoch <= epoch
- *         and balance > 0
- *     )
- * </spec>
- */
-```
-
-```
-/*
- * <spec fn="is_fully_withdrawable_validator" fork="electra" style="full">
- * def is_fully_withdrawable_validator(validator: Validator, balance: Gwei, epoch: Epoch) -> bool:
- *     """
- *     Check if ``validator`` is fully withdrawable.
- *     """
- *     return (
- *         has_execution_withdrawal_credential(validator)  # [Modified in Electra:EIP7251]
- *         and validator.withdrawable_epoch <= epoch
- *         and balance > 0
- *     )
- * </spec>
- */
-```
-
-With functions, it's possible to specify which line/lines should be displayed. For example:
-
-```
-/*
- * <spec fn="is_fully_withdrawable_validator" fork="electra" style="full" lines="5-9">
- * return (
- *     has_execution_withdrawal_credential(validator)  # [Modified in Electra:EIP7251]
- *     and validator.withdrawable_epoch <= epoch
- *     and balance > 0
- * )
- * </spec>
- */
-```
-
-Note that the content is automatically dedented.
-
-Or, to display just a single line, only specify a single number. For example:
-
-```
-/*
- * <spec fn="is_fully_withdrawable_validator" fork="electra" style="full" lines="6">
- * has_execution_withdrawal_credential(validator)  # [Modified in Electra:EIP7251]
- * </spec>
- */
- ```
