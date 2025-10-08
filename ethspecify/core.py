@@ -773,7 +773,7 @@ def replace_spec_tags(file_path, config=None):
             prefix = content[:match.start()].splitlines()[-1]
             prefixed_spec = "\n".join(
                 f"{prefix}{line}" if line.rstrip() else prefix.rstrip()
-                for line in spec_content.rstrip().split("\n")
+                for line in spec_content.split("\n")
             )
             updated_tag = f"{new_opening}\n{prefixed_spec}\n{prefix}</spec>"
             return updated_tag
@@ -1617,65 +1617,73 @@ def generate_specref_files(output_dir, version="nightly", preset="mainnet"):
             # Create entries based on number of unique versions
             use_fork_suffix = len(versions) > 1
 
-            for fork, item_data, spec_content in versions:
-                # Strip trailing whitespace from spec content lines
-                spec_content_lines = [line.rstrip() for line in spec_content.split('\n')]
-                spec_content_clean = '\n'.join(spec_content_lines)
+            for idx, (fork, item_data, spec_content) in enumerate(versions):
+                # Calculate hash of current version
+                hash_value = hashlib.sha256(spec_content.encode('utf-8')).hexdigest()[:8]
 
-                # Calculate hash
-                hash_value = hashlib.sha256(spec_content_clean.encode('utf-8')).hexdigest()[:8]
+                # For multiple versions after the first, use diff style
+                if use_fork_suffix and idx > 0:
+                    # Get previous version for diff
+                    prev_fork, _, prev_spec_content = versions[idx - 1]
 
-                # Build spec tag
-                spec_tag = f'<spec {spec_attr}="{item_name}" fork="{fork}" hash="{hash_value}">'
+                    # Generate diff
+                    diff_content = diff(prev_fork, strip_comments(prev_spec_content), fork, strip_comments(spec_content))
+
+                    # Build spec tag with style="diff"
+                    spec_tag = f'<spec {spec_attr}="{item_name}" fork="{fork}" style="diff" hash="{hash_value}">'
+                    content = diff_content
+                else:
+                    # Build spec tag without style="diff"
+                    spec_tag = f'<spec {spec_attr}="{item_name}" fork="{fork}" hash="{hash_value}">'
+                    content = spec_content
 
                 # Create entry
                 entry_name = f'{item_name}#{fork}' if use_fork_suffix else item_name
                 entry = {
                     'name': entry_name,
                     'sources': [],
-                    'spec': f'{spec_tag}\n{spec_content_clean}\n</spec>'
+                    'spec': f'{spec_tag}\n{content}\n</spec>'
                 }
                 entries.append(entry)
 
         # Write YAML file
         if entries:
-            output_lines = []
-            for i, entry in enumerate(entries):
-                if i > 0:
-                    output_lines.append('')
-                output_lines.append(f'- name: {entry["name"]}')
-                output_lines.append('  sources: []')
-                output_lines.append('  spec: |')
-                for line in entry['spec'].split('\n'):
-                    output_lines.append(f'    {line}')
-
-            # Strip trailing whitespace from all lines
-            output_lines = [line.rstrip() for line in output_lines]
-
             with open(output_path, 'w') as f:
-                f.write('\n'.join(output_lines))
-                f.write('\n')  # End file with newline
+                for i, entry in enumerate(entries):
+                    if i > 0:
+                        f.write('\n')
+                    f.write(f'- name: {entry["name"]}\n')
+                    f.write('  sources: []\n')
+                    f.write('  spec: |\n')
+                    for line in entry['spec'].split('\n'):
+                        f.write(f'    {line}\n')
 
     # Create .ethspecify.yml config file
     config_path = os.path.join(output_dir, '.ethspecify.yml')
-    config_lines = []
-    config_lines.append(f'version: {version}')
-    config_lines.append('style: full')
-    config_lines.append('')
-    config_lines.append('specrefs:')
-    config_lines.append('  files:')
+    with open(config_path, 'w') as f:
+        f.write(f'version: {version}\n')
+        f.write('style: full\n')
+        f.write('\n')
+        f.write('specrefs:\n')
+        f.write('  files:\n')
+        for category, (filename, _) in category_map.items():
+            if items_by_category[category]:
+                f.write(f'    - {filename}\n')
+        f.write('\n')
+        f.write('  exceptions:\n')
+        f.write('    # Add any exceptions here\n')
+
+    # Strip trailing whitespace from all generated files
+    all_files = [config_path]
     for category, (filename, _) in category_map.items():
         if items_by_category[category]:
-            config_lines.append(f'    - {filename}')
-    config_lines.append('')
-    config_lines.append('  exceptions:')
-    config_lines.append('    # Add any exceptions here')
+            all_files.append(os.path.join(output_dir, filename))
 
-    # Strip trailing whitespace from all lines
-    config_lines = [line.rstrip() for line in config_lines]
-
-    with open(config_path, 'w') as f:
-        f.write('\n'.join(config_lines))
-        f.write('\n')  # End file with newline
+    for file_path in all_files:
+        with open(file_path, 'r') as f:
+            lines = f.readlines()
+        with open(file_path, 'w') as f:
+            for line in lines:
+                f.write(line.rstrip() + '\n')
 
     return list(category_map.values())

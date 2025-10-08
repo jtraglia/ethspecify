@@ -121,7 +121,6 @@ exceptions:
     # No light client support
     - is_valid_light_client_header
     - process_light_client_update
-
 ```
 
 ## Style Options
