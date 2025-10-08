@@ -3,7 +3,7 @@ import json
 import os
 import sys
 
-from .core import grep, replace_spec_tags, get_pyspec, get_latest_fork, get_spec_item_history, load_config, run_checks, sort_specref_yaml
+from .core import grep, replace_spec_tags, get_pyspec, get_latest_fork, get_spec_item_history, load_config, run_checks, sort_specref_yaml, generate_specref_files
 
 
 def process(args):
@@ -182,6 +182,28 @@ def list_forks(args):
     return 0
 
 
+def init(args):
+    """Initialize a specrefs directory with basic configuration and empty source mappings."""
+    output_dir = args.path or "specrefs"
+    version = args.version
+
+    # Check if output directory already exists
+    if os.path.exists(output_dir):
+        print(f"Error: directory {repr(output_dir)} already exists.")
+        print("Please specify a different directory or remove the existing one.")
+        return 1
+
+    try:
+        # Generate the specref files
+        print(f"Initializing specrefs directory: {version}")
+        generate_specref_files(output_dir, version, "mainnet")
+        print(f"Successfully created specrefs directory at: {output_dir}")
+        return 0
+    except Exception as e:
+        print(f"Error: {e}")
+        return 1
+
+
 def main():
     parser = argparse.ArgumentParser(
         description="Process files containing <spec> tags."
@@ -254,6 +276,21 @@ def main():
         choices=["text", "json"],
         default="text",
         help="Output format (text or json)",
+    )
+
+    # Parser for 'init' command
+    init_parser = subparsers.add_parser("init", help="Initialize a specrefs directory")
+    init_parser.set_defaults(func=init)
+    init_parser.add_argument(
+        "version",
+        type=str,
+        help="Specification version (e.g., 'nightly' or 'v1.6.0-alpha.5')",
+    )
+    init_parser.add_argument(
+        "--path",
+        type=str,
+        help="Output directory for specrefs (default: specrefs)",
+        default="specrefs",
     )
 
     # Default to 'process' if no args are provided

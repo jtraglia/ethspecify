@@ -1518,3 +1518,164 @@ def run_checks(project_dir, config):
                 overall_success = False
 
     return overall_success, results
+
+
+def generate_specref_files(output_dir, version="nightly", preset="mainnet"):
+    """
+    Generate specref YAML files without sources for manual mapping.
+    Creates a basic directory structure with empty sources.
+    """
+    # Create output directory if it doesn't exist
+    os.makedirs(output_dir, exist_ok=True)
+
+    # Get all spec items
+    pyspec = get_pyspec(version)
+    if preset not in pyspec:
+        raise ValueError(f"Preset '{preset}' not found")
+
+    # Get all forks in chronological order, excluding EIP forks
+    all_forks = sorted(
+        [fork for fork in pyspec[preset].keys() if not fork.startswith("eip")],
+        key=lambda x: (x != "phase0", x)
+    )
+
+    # Map history keys to file names and spec attribute names
+    category_map = {
+        'constant_vars': ('constants.yml', 'constant_var'),
+        'config_vars': ('configs.yml', 'config_var'),
+        'preset_vars': ('presets.yml', 'preset_var'),
+        'functions': ('functions.yml', 'fn'),
+        'ssz_objects': ('containers.yml', 'container'),
+        'dataclasses': ('dataclasses.yml', 'dataclass'),
+        'custom_types': ('types.yml', 'custom_type'),
+    }
+
+    # Collect all items organized by category
+    items_by_category = {cat: {} for cat in category_map.keys()}
+
+    for fork in all_forks:
+        if fork not in pyspec[preset]:
+            continue
+        fork_data = pyspec[preset][fork]
+
+        for category in items_by_category.keys():
+            if category not in fork_data:
+                continue
+
+            for item_name, item_data in fork_data[category].items():
+                # Track which forks have this item
+                if item_name not in items_by_category[category]:
+                    items_by_category[category][item_name] = []
+                items_by_category[category][item_name].append((fork, item_data))
+
+    # Generate YAML files for each category
+    for category, (filename, spec_attr) in category_map.items():
+        if not items_by_category[category]:
+            continue
+
+        output_path = os.path.join(output_dir, filename)
+        entries = []
+
+        # Sort items alphabetically
+        for item_name in sorted(items_by_category[category].keys()):
+            forks_data = items_by_category[category][item_name]
+
+            # Find all unique versions of this item (where content differs)
+            versions = []  # List of (fork, item_data, spec_content)
+            prev_content = None
+
+            for fork, item_data in forks_data:
+                # Build the spec content based on category
+                if category == 'functions':
+                    spec_content = item_data
+                elif category in ['constant_vars', 'config_vars', 'preset_vars']:
+                    # item_data is a list: [type, value, ...]
+                    if isinstance(item_data, (list, tuple)) and len(item_data) >= 2:
+                        type_info = item_data[0]
+                        value = item_data[1]
+                        if type_info:
+                            spec_content = f"{item_name}: {type_info} = {value}"
+                        else:
+                            spec_content = f"{item_name} = {value}"
+                    else:
+                        spec_content = str(item_data)
+                elif category == 'ssz_objects':
+                    spec_content = item_data
+                elif category == 'dataclasses':
+                    spec_content = item_data.replace("@dataclass\n", "")
+                elif category == 'custom_types':
+                    # custom_types are simple type aliases: TypeName = SomeType
+                    spec_content = f"{item_name} = {item_data}"
+                else:
+                    spec_content = str(item_data)
+
+                # Only add this version if it's different from the previous one
+                if prev_content is None or spec_content != prev_content:
+                    versions.append((fork, item_data, spec_content))
+                    prev_content = spec_content
+
+            # Create entries based on number of unique versions
+            use_fork_suffix = len(versions) > 1
+
+            for fork, item_data, spec_content in versions:
+                # Strip trailing whitespace from spec content lines
+                spec_content_lines = [line.rstrip() for line in spec_content.split('\n')]
+                spec_content_clean = '\n'.join(spec_content_lines)
+
+                # Calculate hash
+                hash_value = hashlib.sha256(spec_content_clean.encode('utf-8')).hexdigest()[:8]
+
+                # Build spec tag
+                spec_tag = f'<spec {spec_attr}="{item_name}" fork="{fork}" hash="{hash_value}">'
+
+                # Create entry
+                entry_name = f'{item_name}#{fork}' if use_fork_suffix else item_name
+                entry = {
+                    'name': entry_name,
+                    'sources': [],
+                    'spec': f'{spec_tag}\n{spec_content_clean}\n</spec>'
+                }
+                entries.append(entry)
+
+        # Write YAML file
+        if entries:
+            output_lines = []
+            for i, entry in enumerate(entries):
+                if i > 0:
+                    output_lines.append('')
+                output_lines.append(f'- name: {entry["name"]}')
+                output_lines.append('  sources: []')
+                output_lines.append('  spec: |')
+                for line in entry['spec'].split('\n'):
+                    output_lines.append(f'    {line}')
+
+            # Strip trailing whitespace from all lines
+            output_lines = [line.rstrip() for line in output_lines]
+
+            with open(output_path, 'w') as f:
+                f.write('\n'.join(output_lines))
+                f.write('\n')  # End file with newline
+
+    # Create .ethspecify.yml config file
+    config_path = os.path.join(output_dir, '.ethspecify.yml')
+    config_lines = []
+    config_lines.append(f'version: {version}')
+    config_lines.append('style: full')
+    config_lines.append('')
+    config_lines.append('specrefs:')
+    config_lines.append('  files:')
+    for category, (filename, _) in category_map.items():
+        if items_by_category[category]:
+            config_lines.append(f'    - {filename}')
+    config_lines.append('')
+    config_lines.append('  exceptions:')
+    config_lines.append('    # Add any exceptions here')
+
+    # Strip trailing whitespace from all lines
+    config_lines = [line.rstrip() for line in config_lines]
+
+    with open(config_path, 'w') as f:
+        f.write('\n'.join(config_lines))
+        f.write('\n')  # End file with newline
+
+    return list(category_map.values())
