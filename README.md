@@ -103,7 +103,7 @@ MISSING: constants.BLS_MODULUS#deneb
 ### Add exceptions
 
 Some spec items may not be implemented in your client. Add them to the exceptions list in
-`.ethspecify.yml`:
+`specrefs/.ethspecify.yml`:
 
 ```yaml
 specrefs:
@@ -114,8 +114,8 @@ specrefs:
 
 exceptions:
   containers:
-    # Not implemented
-    - compute_matrix#fulu
+    # Not defined, unnecessary
+    - Eth1Block
 
   functions:
     # No light client support
