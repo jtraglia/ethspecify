@@ -58,9 +58,10 @@ jobs:
             if [[ -z "$tag" ]]; then continue; fi
 
             # Skip tags before v1.6.0-alpha.2
-            # Use sort -V to properly compare semantic versions
+            # Use Python's packaging.version for proper semantic version comparison
             MIN_VERSION="v1.6.0-alpha.2"
-            if [[ $(printf '%s\n%s' "$MIN_VERSION" "$tag" | sort -V | head -n1) != "$MIN_VERSION" ]]; then
+            SKIP=$(python3 -c "from packaging import version; import sys; min_ver = version.parse('$MIN_VERSION'.lstrip('v')); tag_ver = version.parse('$tag'.lstrip('v')); print('1' if tag_ver < min_ver else '0')")
+            if [[ "$SKIP" == "1" ]]; then
               echo "Skipping old tag: $tag (before v1.6.0-alpha.2)"
               continue
             fi
