@@ -585,6 +585,7 @@
   "specs/gloas/validator.md::#configuration": "https://github.com/ethereum/consensus-specs/blob/master/specs/gloas/validator.md#configuration",
   "specs/gloas/validator.md::#time-parameters": "https://github.com/ethereum/consensus-specs/blob/master/specs/gloas/validator.md#time-parameters",
   "specs/gloas/validator.md::#validator-assignment": "https://github.com/ethereum/consensus-specs/blob/master/specs/gloas/validator.md#validator-assignment",
+  "specs/gloas/validator.md::#payload-timeliness-committee": "https://github.com/ethereum/consensus-specs/blob/master/specs/gloas/validator.md#payload-timeliness-committee",
   "specs/gloas/validator.md::#lookahead": "https://github.com/ethereum/consensus-specs/blob/master/specs/gloas/validator.md#lookahead",
   "specs/gloas/validator.md::#beacon-chain-responsibilities": "https://github.com/ethereum/consensus-specs/blob/master/specs/gloas/validator.md#beacon-chain-responsibilities",
   "specs/gloas/validator.md::#attestation": "https://github.com/ethereum/consensus-specs/blob/master/specs/gloas/validator.md#attestation",
