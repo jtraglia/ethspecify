@@ -3,7 +3,7 @@ import json
 import os
 import sys
 
-from .core import grep, replace_spec_tags, get_pyspec, get_latest_fork, get_spec_item_history, load_config, run_checks, sort_specref_yaml, generate_specref_files
+from .core import grep, replace_spec_tags, get_pyspec, get_latest_fork, get_spec_item_history, load_config, run_checks, sort_specref_yaml, generate_specref_files, get_yaml_filename_for_spec_attr, get_spec_attr_and_name, add_missing_entries_to_yaml
 
 
 def process(args):
@@ -16,20 +16,37 @@ def process(args):
     # Load config once from the project directory
     config = load_config(project_dir)
 
+    # Check if auto_add_missing_entries and auto_standardize_names are enabled
+    specrefs_config = config.get('specrefs', {})
+    if isinstance(specrefs_config, dict):
+        auto_add_missing = specrefs_config.get('auto_add_missing_entries', False)
+        auto_standardize_names = specrefs_config.get('auto_standardize_names', False)
+        specrefs_files = specrefs_config.get('files', [])
+    elif isinstance(specrefs_config, list):
+        auto_add_missing = False
+        auto_standardize_names = False
+        specrefs_files = specrefs_config
+    else:
+        auto_add_missing = False
+        auto_standardize_names = False
+        specrefs_files = []
+
     # Process spec tags in files
     for f in grep(project_dir, r"<spec\b.*?>", args.exclude):
         print(f"Processing file: {f}")
         replace_spec_tags(f, config)
 
-    # Sort specref YAML files if they exist in config
-    specrefs_config = config.get('specrefs', {})
-    if isinstance(specrefs_config, dict):
-        specrefs_files = specrefs_config.get('files', [])
-    elif isinstance(specrefs_config, list):
-        specrefs_files = specrefs_config
-    else:
-        specrefs_files = []
+    # Add missing spec items to YAML files if enabled
+    if auto_add_missing:
+        from .core import add_missing_spec_items_to_yaml_files
+        add_missing_spec_items_to_yaml_files(project_dir, config, specrefs_files)
 
+    # Update entry names to <spec_item>#<fork> format if enabled
+    if auto_standardize_names:
+        from .core import update_entry_names_in_yaml_files
+        update_entry_names_in_yaml_files(project_dir, specrefs_files)
+
+    # Sort specref YAML files if they exist in config
     for yaml_file in specrefs_files:
         yaml_path = os.path.join(project_dir, yaml_file)
         if os.path.exists(yaml_path):

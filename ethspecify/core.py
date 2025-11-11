@@ -89,7 +89,8 @@ def validate_exception_items(exceptions, version):
                             break
 
             if not item_found:
-                errors.append(f"invalid key: {exception_key}.{item_name}{"#" + fork if fork else ""}")
+                fork_suffix = f"#{fork}" if fork else ""
+                errors.append(f"invalid key: {exception_key}.{item_name}{fork_suffix}")
 
     if errors:
         error_msg = "Invalid exception items in configuration:\n" + "\n".join(f"  - {e}" for e in errors)
@@ -724,6 +725,9 @@ def replace_spec_tags(file_path, config=None):
         re.DOTALL
     )
 
+    # Collect processed spec items for potential YAML updates
+    processed_items = []
+
     def rebuild_opening_tag(attributes, hash_value):
         # Rebuild a fresh opening tag from attributes, overriding any existing hash.
         new_opening = "<spec"
@@ -762,6 +766,17 @@ def replace_spec_tags(file_path, config=None):
         spec = get_spec(attributes, preset, fork, version)
         hash_value = hashlib.sha256(spec.encode('utf-8')).hexdigest()[:8]
 
+        # Collect this item for potential YAML updates
+        processed_items.append({
+            'attributes': attributes,
+            'preset': preset,
+            'fork': fork,
+            'style': style,
+            'version': version,
+            'spec': spec,
+            'hash': hash_value
+        })
+
         if style == "hash":
             # Rebuild a fresh self-closing tag.
             updated_tag = rebuild_self_closing_tag(attributes, hash_value)
@@ -785,6 +800,151 @@ def replace_spec_tags(file_path, config=None):
     # Write the updated content back to the file
     with open(file_path, 'w') as file:
         file.write(updated_content)
+
+    # Return processed items for potential YAML updates
+    return processed_items
+
+
+def get_yaml_filename_for_spec_attr(spec_attr):
+    """Map spec attribute to YAML filename."""
+    attr_to_file = {
+        'fn': 'functions.yml',
+        'function': 'functions.yml',
+        'constant_var': 'constants.yml',
+        'config_var': 'configs.yml',
+        'preset_var': 'presets.yml',
+        'container': 'containers.yml',
+        'ssz_object': 'containers.yml',
+        'dataclass': 'dataclasses.yml',
+        'custom_type': 'types.yml',
+    }
+    return attr_to_file.get(spec_attr)
+
+
+def get_spec_attr_and_name(attributes):
+    """Extract the spec attribute and item name from tag attributes."""
+    spec_attrs = ['fn', 'function', 'constant_var', 'config_var', 'preset_var',
+                  'container', 'ssz_object', 'dataclass', 'custom_type']
+    for attr in spec_attrs:
+        if attr in attributes:
+            return attr, attributes[attr]
+    return None, None
+
+
+def load_yaml_entries(yaml_file):
+    """Load existing entries from a YAML file."""
+    if not os.path.exists(yaml_file):
+        return []
+
+    try:
+        with open(yaml_file, 'r') as f:
+            content_str = f.read()
+
+        # Try to fix common YAML issues with unquoted search strings containing colons
+        content_str = re.sub(r'(\s+search:\s+)([^"\n]+:)(\s*$)', r'\1"\2"\3', content_str, flags=re.MULTILINE)
+
+        try:
+            content = yaml.safe_load(content_str)
+        except yaml.YAMLError:
+            content = yaml.load(content_str, Loader=yaml.FullLoader)
+
+        if isinstance(content, list):
+            return content
+        return []
+    except (yaml.YAMLError, IOError):
+        return []
+
+
+def extract_spec_tag_key(spec_content):
+    """Extract a unique key from spec tag to identify duplicates."""
+    if not spec_content:
+        return None
+
+    # Extract the opening spec tag
+    match = re.search(r'<spec\b([^>]*)>', spec_content)
+    if not match:
+        return None
+
+    # Extract attributes from the tag
+    attributes = extract_attributes(match.group(0))
+
+    # Build a key from the spec attribute and fork
+    # e.g., "constant_var:DOMAIN_PTC_ATTESTER:fork:gloas"
+    key_parts = []
+    for attr in ['fn', 'function', 'constant_var', 'config_var', 'preset_var',
+                 'container', 'ssz_object', 'dataclass', 'custom_type']:
+        if attr in attributes:
+            key_parts.append(f"{attr}:{attributes[attr]}")
+            break
+
+    if 'fork' in attributes:
+        key_parts.append(f"fork:{attributes['fork']}")
+
+    return ':'.join(key_parts) if key_parts else None
+
+
+def add_missing_entries_to_yaml(yaml_file, new_entries):
+    """Add new entries to a YAML file and sort it."""
+    if not new_entries:
+        return
+
+    # Load existing entries
+    existing_entries = load_yaml_entries(yaml_file)
+
+    # Build a set of existing spec tag keys
+    existing_spec_keys = set()
+    for entry in existing_entries:
+        if isinstance(entry, dict) and 'spec' in entry:
+            spec_key = extract_spec_tag_key(entry['spec'])
+            if spec_key:
+                existing_spec_keys.add(spec_key)
+
+    # Filter out entries that already exist (based on spec tag, not name)
+    entries_to_add = []
+    for entry in new_entries:
+        spec_key = extract_spec_tag_key(entry.get('spec', ''))
+        if spec_key and spec_key not in existing_spec_keys:
+            entries_to_add.append(entry)
+            existing_spec_keys.add(spec_key)  # Avoid duplicates within new entries
+
+    if not entries_to_add:
+        return
+
+    # Combine and write
+    all_entries = existing_entries + entries_to_add
+
+    # Ensure directory exists
+    os.makedirs(os.path.dirname(yaml_file) if os.path.dirname(yaml_file) else '.', exist_ok=True)
+
+    # Write combined entries using the same format as generate_specref_files
+    with open(yaml_file, 'w') as f:
+        for i, entry in enumerate(all_entries):
+            if i > 0:
+                f.write('\n')
+            f.write(f'- name: {entry["name"]}\n')
+            if 'sources' in entry:
+                if isinstance(entry['sources'], list) and len(entry['sources']) == 0:
+                    f.write('  sources: []\n')
+                else:
+                    f.write('  sources:\n')
+                    for source in entry['sources']:
+                        if isinstance(source, dict):
+                            f.write(f'    - file: {source.get("file", "")}\n')
+                            if 'search' in source:
+                                f.write(f'      search: {source["search"]}\n')
+                            if 'regex' in source:
+                                f.write(f'      regex: {source["regex"]}\n')
+                        else:
+                            f.write(f'    - {source}\n')
+            if 'spec' in entry:
+                f.write('  spec: |\n')
+                for line in entry['spec'].split('\n'):
+                    f.write(f'    {line}\n')
+
+    # Sort the file
+    sort_specref_yaml(yaml_file)
+
+    print(f"Added {len(entries_to_add)} new entries to {yaml_file}")
 
 
 def check_source_files(yaml_file, project_root, exceptions=None):
@@ -1518,6 +1678,209 @@ def run_checks(project_dir, config):
                 overall_success = False
 
     return overall_success, results
+
+
+def update_entry_names_in_yaml_files(project_dir, specrefs_files):
+    """
+    Update all entry names to use the format <spec_item>#<fork>.
+    """
+    for yaml_file in specrefs_files:
+        yaml_path = os.path.join(project_dir, yaml_file)
+
+        if not os.path.exists(yaml_path):
+            continue
+
+        # Load existing entries
+        existing_entries = load_yaml_entries(yaml_path)
+        if not existing_entries:
+            continue
+
+        updated = False
+        for entry in existing_entries:
+            if not isinstance(entry, dict) or 'spec' not in entry:
+                continue
+
+            # Extract spec tag attributes
+            spec_content = entry['spec']
+            match = re.search(r'<spec\b([^>]*)>', spec_content)
+            if not match:
+                continue
+
+            attributes = extract_attributes(match.group(0))
+
+            # Get the spec item name and fork
+            spec_attr, item_name = get_spec_attr_and_name(attributes)
+            fork = attributes.get('fork')
+
+            if item_name and fork:
+                # Build the expected name
+                expected_name = f'{item_name}#{fork}'
+
+                # Update if different
+                if entry.get('name') != expected_name:
+                    entry['name'] = expected_name
+                    updated = True
+
+        # Write back if updated
+        if updated:
+            with open(yaml_path, 'w') as f:
+                for i, entry in enumerate(existing_entries):
+                    if i > 0:
+                        f.write('\n')
+                    f.write(f'- name: {entry["name"]}\n')
+                    if 'sources' in entry:
+                        if isinstance(entry['sources'], list) and len(entry['sources']) == 0:
+                            f.write('  sources: []\n')
+                        else:
+                            f.write('  sources:\n')
+                            for source in entry['sources']:
+                                if isinstance(source, dict):
+                                    f.write(f'    - file: {source.get("file", "")}\n')
+                                    if 'search' in source:
+                                        f.write(f'      search: {source["search"]}\n')
+                                    if 'regex' in source:
+                                        f.write(f'      regex: {source["regex"]}\n')
+                                else:
+                                    f.write(f'    - {source}\n')
+                    if 'spec' in entry:
+                        f.write('  spec: |\n')
+                        for line in entry['spec'].split('\n'):
+                            f.write(f'    {line}\n')
+
+            # Sort the file
+            sort_specref_yaml(yaml_path)
+            print(f"Updated entry names in {yaml_file}")
+
+
+def add_missing_spec_items_to_yaml_files(project_dir, config, specrefs_files):
+    """
+    Add missing spec items to existing YAML files.
+    Ensures all spec items from the specification exist in YAML files with sources: []
+    """
+    version = config.get('version', 'nightly')
+    preset = 'mainnet'  # Could make this configurable
+
+    # Get all spec items
+    pyspec = get_pyspec(version)
+    if preset not in pyspec:
+        print(f"Error: Preset '{preset}' not found")
+        return
+
+    # Get all forks in chronological order, excluding EIP forks
+    all_forks = sorted(
+        [fork for fork in pyspec[preset].keys() if not fork.startswith("eip")],
+        key=lambda x: (x != "phase0", x)
+    )
+
+    # Map YAML filenames to category keys and spec attribute names
+    filename_to_category = {
+        'constants.yml': ('constant_vars', 'constant_var'),
+        'configs.yml': ('config_vars', 'config_var'),
+        'presets.yml': ('preset_vars', 'preset_var'),
+        'functions.yml': ('functions', 'fn'),
+        'containers.yml': ('ssz_objects', 'container'),
+        'dataclasses.yml': ('dataclasses', 'dataclass'),
+        'types.yml': ('custom_types', 'custom_type'),
+    }
+
+    for yaml_file in specrefs_files:
+        yaml_path = os.path.join(project_dir, yaml_file)
+        yaml_basename = os.path.basename(yaml_file)
+
+        if yaml_basename not in filename_to_category:
+            continue
+
+        category, spec_attr = filename_to_category[yaml_basename]
+
+        # Collect all items in this category organized by name and fork
+        items_by_name = {}
+        for fork in all_forks:
+            if fork not in pyspec[preset]:
+                continue
+            fork_data = pyspec[preset][fork]
+
+            if category not in fork_data:
+                continue
+
+            for item_name, item_data in fork_data[category].items():
+                if item_name not in items_by_name:
+                    items_by_name[item_name] = []
+                items_by_name[item_name].append((fork, item_data))
+
+        # Build entries for missing items
+        new_entries = []
+        for item_name in sorted(items_by_name.keys()):
+            forks_data = items_by_name[item_name]
+
+            # Find all unique versions of this item (where content differs)
+            versions = []  # List of (fork, item_data, spec_content)
+            prev_content = None
+
+            for fork, item_data in forks_data:
+                # Build the spec content based on category
+                if category == 'functions':
+                    spec_content = item_data
+                elif category in ['constant_vars', 'config_vars', 'preset_vars']:
+                    # item_data is a list: [type, value, ...]
+                    if isinstance(item_data, (list, tuple)) and len(item_data) >= 2:
+                        type_info = item_data[0]
+                        value = item_data[1]
+                        if type_info:
+                            spec_content = f"{item_name}: {type_info} = {value}"
+                        else:
+                            spec_content = f"{item_name} = {value}"
+                    else:
+                        spec_content = str(item_data)
+                elif category == 'ssz_objects':
+                    spec_content = item_data
+                elif category == 'dataclasses':
+                    spec_content = item_data.replace("@dataclass\n", "")
+                elif category == 'custom_types':
+                    # custom_types are simple type aliases: TypeName = SomeType
+                    spec_content = f"{item_name} = {item_data}"
+                else:
+                    spec_content = str(item_data)
+
+                # Only add this version if it's different from the previous one
+                if prev_content is None or spec_content != prev_content:
+                    versions.append((fork, item_data, spec_content))
+                    prev_content = spec_content
+
+            # Create entries based on number of unique versions
+            use_fork_suffix = len(versions) > 1
+
+            for idx, (fork, item_data, spec_content) in enumerate(versions):
+                # Calculate hash of current version
+                hash_value = hashlib.sha256(spec_content.encode('utf-8')).hexdigest()[:8]
+
+                # For multiple versions after the first, use diff style
+                if use_fork_suffix and idx > 0:
+                    # Get previous version for diff
+                    prev_fork, _, prev_spec_content = versions[idx - 1]
+
+                    # Generate diff
+                    diff_content = diff(prev_fork, strip_comments(prev_spec_content), fork, strip_comments(spec_content))
+
+                    # Build spec tag with style="diff"
+                    spec_tag = f'<spec {spec_attr}="{item_name}" fork="{fork}" style="diff" hash="{hash_value}">'
+                    content = diff_content
+                else:
+                    # Build spec tag without style="diff"
+                    spec_tag = f'<spec {spec_attr}="{item_name}" fork="{fork}" hash="{hash_value}">'
+                    content = spec_content
+
+                # Create entry
+                entry_name = f'{item_name}#{fork}' if use_fork_suffix else item_name
+                entry = {
+                    'name': entry_name,
+                    'sources': [],
+                    'spec': f'{spec_tag}\n{content}\n</spec>'
+                }
+                new_entries.append(entry)
+
+        # Add missing entries to the YAML file
+        if new_entries:
+            add_missing_entries_to_yaml(yaml_path, new_entries)
 
 
 def generate_specref_files(output_dir, version="nightly", preset="mainnet"):
