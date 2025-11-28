@@ -970,6 +970,8 @@
   "specs/phase0/fork-choice.md::#get_ancestor": "https://github.com/ethereum/consensus-specs/blob/master/specs/phase0/fork-choice.md#get_ancestor",
   "specs/phase0/fork-choice.md::#calculate_committee_fraction": "https://github.com/ethereum/consensus-specs/blob/master/specs/phase0/fork-choice.md#calculate_committee_fraction",
   "specs/phase0/fork-choice.md::#get_checkpoint_block": "https://github.com/ethereum/consensus-specs/blob/master/specs/phase0/fork-choice.md#get_checkpoint_block",
+  "specs/phase0/fork-choice.md::#get_attestation_score": "https://github.com/ethereum/consensus-specs/blob/master/specs/phase0/fork-choice.md#get_attestation_score",
+  "specs/phase0/fork-choice.md::#compute_proposer_score": "https://github.com/ethereum/consensus-specs/blob/master/specs/phase0/fork-choice.md#compute_proposer_score",
   "specs/phase0/fork-choice.md::#get_proposer_score": "https://github.com/ethereum/consensus-specs/blob/master/specs/phase0/fork-choice.md#get_proposer_score",
   "specs/phase0/fork-choice.md::#get_weight": "https://github.com/ethereum/consensus-specs/blob/master/specs/phase0/fork-choice.md#get_weight",
   "specs/phase0/fork-choice.md::#get_voting_source": "https://github.com/ethereum/consensus-specs/blob/master/specs/phase0/fork-choice.md#get_voting_source",
