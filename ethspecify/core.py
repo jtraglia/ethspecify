@@ -589,9 +589,18 @@ def sort_specref_yaml(yaml_file):
         with open(yaml_file, 'r') as f:
             content_str = f.read()
 
-        # Try to fix common YAML issues with unquoted search strings containing colons
-        # This is the same fix used in check_source_files
-        content_str = re.sub(r'(\s+search:\s+)([^"\n]+:)(\s*$)', r'\1"\2"\3', content_str, flags=re.MULTILINE)
+        # Extract search values that originally had single or double quotes before YAML parsing
+        # This preserves the original quoting style exactly
+        single_quoted_searches = set()
+        for match in re.finditer(r"search:\s*'([^']*)'", content_str):
+            single_quoted_searches.add(match.group(1))
+        double_quoted_searches = set()
+        for match in re.finditer(r'search:\s*"([^"]*)"', content_str):
+            double_quoted_searches.add(match.group(1))
+
+        # Temporarily quote unquoted search strings with colons so YAML can parse them
+        # This doesn't affect the output - we restore original quoting when writing
+        content_str = re.sub(r'(\s+search:\s+)([^"\'\n]+:)(\s*$)', r'\1"\2"\3', content_str, flags=re.MULTILINE)
 
         try:
             content = yaml.safe_load(content_str)
@@ -672,16 +681,11 @@ def sort_specref_yaml(yaml_file):
                                         output_lines.append(f"    - file: {source.get('file', '')}")
                                         if 'search' in source:
                                             search_val = source['search']
-                                            # Only quote if:
-                                            # 1. Contains a colon followed by space or end of string (YAML mapping issue)
-                                            # 2. Not already quoted
-                                            # 3. Doesn't contain internal quotes (like regex patterns)
-                                            if ((':' in search_val or search_val.endswith(':')) and
-                                                not (search_val.startswith('"') and search_val.endswith('"')) and
-                                                '"' not in search_val):
-                                                # Only quote simple strings with colons, not complex patterns
-                                                if not any(char in search_val for char in ['\\', '*', '|', '[', ']', '(', ')']):
-                                                    search_val = f'"{search_val}"'
+                                            # Preserve original quoting style exactly
+                                            if search_val in single_quoted_searches:
+                                                search_val = f"'{search_val}'"
+                                            elif search_val in double_quoted_searches:
+                                                search_val = f'"{search_val}"'
                                             output_lines.append(f"      search: {search_val}")
                                         if 'regex' in source:
                                             # Keep boolean values lowercase for consistency
