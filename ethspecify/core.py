@@ -892,6 +892,18 @@ def add_missing_entries_to_yaml(yaml_file, new_entries):
     if not new_entries:
         return
 
+    # Extract search values that originally had single or double quotes before YAML parsing
+    # This preserves the original quoting style exactly
+    single_quoted_searches = set()
+    double_quoted_searches = set()
+    if os.path.exists(yaml_file):
+        with open(yaml_file, 'r') as f:
+            content_str = f.read()
+        for match in re.finditer(r"search:\s*'([^']*)'", content_str):
+            single_quoted_searches.add(match.group(1))
+        for match in re.finditer(r'search:\s*"([^"]*)"', content_str):
+            double_quoted_searches.add(match.group(1))
+
     # Load existing entries
     existing_entries = load_yaml_entries(yaml_file)
 
@@ -935,7 +947,13 @@ def add_missing_entries_to_yaml(yaml_file, new_entries):
                         if isinstance(source, dict):
                             f.write(f'    - file: {source.get("file", "")}\n')
                             if 'search' in source:
-                                f.write(f'      search: {source["search"]}\n')
+                                search_val = source["search"]
+                                # Preserve original quoting style exactly
+                                if search_val in single_quoted_searches:
+                                    search_val = f"'{search_val}'"
+                                elif search_val in double_quoted_searches:
+                                    search_val = f'"{search_val}"'
+                                f.write(f'      search: {search_val}\n')
                             if 'regex' in source:
                                 f.write(f'      regex: {source["regex"]}\n')
                         else:
@@ -1694,6 +1712,17 @@ def update_entry_names_in_yaml_files(project_dir, specrefs_files):
         if not os.path.exists(yaml_path):
             continue
 
+        # Extract search values that originally had single or double quotes before YAML parsing
+        # This preserves the original quoting style exactly
+        single_quoted_searches = set()
+        double_quoted_searches = set()
+        with open(yaml_path, 'r') as f:
+            content_str = f.read()
+        for match in re.finditer(r"search:\s*'([^']*)'", content_str):
+            single_quoted_searches.add(match.group(1))
+        for match in re.finditer(r'search:\s*"([^"]*)"', content_str):
+            double_quoted_searches.add(match.group(1))
+
         # Load existing entries
         existing_entries = load_yaml_entries(yaml_path)
         if not existing_entries:
@@ -1741,7 +1770,13 @@ def update_entry_names_in_yaml_files(project_dir, specrefs_files):
                                 if isinstance(source, dict):
                                     f.write(f'    - file: {source.get("file", "")}\n')
                                     if 'search' in source:
-                                        f.write(f'      search: {source["search"]}\n')
+                                        search_val = source["search"]
+                                        # Preserve original quoting style exactly
+                                        if search_val in single_quoted_searches:
+                                            search_val = f"'{search_val}'"
+                                        elif search_val in double_quoted_searches:
+                                            search_val = f'"{search_val}"'
+                                        f.write(f'      search: {search_val}\n')
                                     if 'regex' in source:
                                         f.write(f'      regex: {source["regex"]}\n')
                                 else:
