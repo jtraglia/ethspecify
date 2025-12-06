@@ -1721,6 +1721,7 @@
   "tests/formats/README.md::#common-output-formats": "https://github.com/ethereum/consensus-specs/blob/master/tests/formats/README.md#common-output-formats",
   "tests/formats/README.md::#special-output-parts": "https://github.com/ethereum/consensus-specs/blob/master/tests/formats/README.md#special-output-parts",
   "tests/formats/README.md::#metayaml": "https://github.com/ethereum/consensus-specs/blob/master/tests/formats/README.md#metayaml",
+  "tests/formats/README.md::#manifestyaml": "https://github.com/ethereum/consensus-specs/blob/master/tests/formats/README.md#manifestyaml",
   "tests/formats/README.md::#configyaml": "https://github.com/ethereum/consensus-specs/blob/master/tests/formats/README.md#configyaml",
   "tests/formats/README.md::#config-sourcing": "https://github.com/ethereum/consensus-specs/blob/master/tests/formats/README.md#config-sourcing",
   "tests/formats/README.md::#note-for-implementers": "https://github.com/ethereum/consensus-specs/blob/master/tests/formats/README.md#note-for-implementers",
