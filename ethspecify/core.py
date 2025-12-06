@@ -1892,28 +1892,15 @@ def add_missing_spec_items_to_yaml_files(project_dir, config, specrefs_files):
                 # Calculate hash of current version
                 hash_value = hashlib.sha256(spec_content.encode('utf-8')).hexdigest()[:8]
 
-                # For multiple versions after the first, use diff style
-                if use_fork_suffix and idx > 0:
-                    # Get previous version for diff
-                    prev_fork, _, prev_spec_content = versions[idx - 1]
-
-                    # Generate diff
-                    diff_content = diff(prev_fork, strip_comments(prev_spec_content), fork, strip_comments(spec_content))
-
-                    # Build spec tag with style="diff"
-                    spec_tag = f'<spec {spec_attr}="{item_name}" fork="{fork}" style="diff" hash="{hash_value}">'
-                    content = diff_content
-                else:
-                    # Build spec tag without style="diff"
-                    spec_tag = f'<spec {spec_attr}="{item_name}" fork="{fork}" hash="{hash_value}">'
-                    content = spec_content
+                # Build spec tag
+                spec_tag = f'<spec {spec_attr}="{item_name}" fork="{fork}" hash="{hash_value}">'
 
                 # Create entry
                 entry_name = f'{item_name}#{fork}' if use_fork_suffix else item_name
                 entry = {
                     'name': entry_name,
                     'sources': [],
-                    'spec': f'{spec_tag}\n{content}\n</spec>'
+                    'spec': f'{spec_tag}\n{spec_content}\n</spec>'
                 }
                 new_entries.append(entry)
 
@@ -2023,28 +2010,15 @@ def generate_specref_files(output_dir, version="nightly", preset="mainnet"):
                 # Calculate hash of current version
                 hash_value = hashlib.sha256(spec_content.encode('utf-8')).hexdigest()[:8]
 
-                # For multiple versions after the first, use diff style
-                if use_fork_suffix and idx > 0:
-                    # Get previous version for diff
-                    prev_fork, _, prev_spec_content = versions[idx - 1]
-
-                    # Generate diff
-                    diff_content = diff(prev_fork, strip_comments(prev_spec_content), fork, strip_comments(spec_content))
-
-                    # Build spec tag with style="diff"
-                    spec_tag = f'<spec {spec_attr}="{item_name}" fork="{fork}" style="diff" hash="{hash_value}">'
-                    content = diff_content
-                else:
-                    # Build spec tag without style="diff"
-                    spec_tag = f'<spec {spec_attr}="{item_name}" fork="{fork}" hash="{hash_value}">'
-                    content = spec_content
+                # Build spec tag
+                spec_tag = f'<spec {spec_attr}="{item_name}" fork="{fork}" hash="{hash_value}">'
 
                 # Create entry
                 entry_name = f'{item_name}#{fork}' if use_fork_suffix else item_name
                 entry = {
                     'name': entry_name,
                     'sources': [],
-                    'spec': f'{spec_tag}\n{content}\n</spec>'
+                    'spec': f'{spec_tag}\n{spec_content}\n</spec>'
                 }
                 entries.append(entry)
 
