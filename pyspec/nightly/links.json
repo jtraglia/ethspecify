@@ -631,7 +631,6 @@
   "specs/gloas/fork-choice.md::#new-on_execution_payload": "https://github.com/ethereum/consensus-specs/blob/master/specs/gloas/fork-choice.md#new-on_execution_payload",
   "specs/gloas/fork-choice.md::#new-on_payload_attestation_message": "https://github.com/ethereum/consensus-specs/blob/master/specs/gloas/fork-choice.md#new-on_payload_attestation_message",
   "specs/gloas/fork-choice.md::#modified-validate_on_attestation": "https://github.com/ethereum/consensus-specs/blob/master/specs/gloas/fork-choice.md#modified-validate_on_attestation",
-  "specs/gloas/fork-choice.md::#modified-validate_merge_block": "https://github.com/ethereum/consensus-specs/blob/master/specs/gloas/fork-choice.md#modified-validate_merge_block",
   "specs/gloas/p2p-interface.md::#introduction": "https://github.com/ethereum/consensus-specs/blob/master/specs/gloas/p2p-interface.md#introduction",
   "specs/gloas/p2p-interface.md::#modification-in-gloas": "https://github.com/ethereum/consensus-specs/blob/master/specs/gloas/p2p-interface.md#modification-in-gloas",
   "specs/gloas/p2p-interface.md::#helper-functions": "https://github.com/ethereum/consensus-specs/blob/master/specs/gloas/p2p-interface.md#helper-functions",
