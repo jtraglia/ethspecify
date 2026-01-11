@@ -1731,7 +1731,7 @@
   "sync/optimistic.md::#what-if-terminal_block_hash-is-used": "https://github.com/ethereum/consensus-specs/blob/master/sync/optimistic.md#what-if-terminal_block_hash-is-used",
   "docs/docs/release.md::#introduction": "https://github.com/ethereum/consensus-specs/blob/master/docs/docs/release.md#introduction",
   "docs/docs/release.md::#bump-the-version": "https://github.com/ethereum/consensus-specs/blob/master/docs/docs/release.md#bump-the-version",
-  "docs/docs/release.md::#tag-the-release": "https://github.com/ethereum/consensus-specs/blob/master/docs/docs/release.md#tag-the-release",
+  "docs/docs/release.md::#publish-the-release": "https://github.com/ethereum/consensus-specs/blob/master/docs/docs/release.md#publish-the-release",
   "docs/docs/release.md::#make-an-announcement": "https://github.com/ethereum/consensus-specs/blob/master/docs/docs/release.md#make-an-announcement",
   "docs/docs/new-feature.md::#a-make-it-executable-for-linter-checks": "https://github.com/ethereum/consensus-specs/blob/master/docs/docs/new-feature.md#a-make-it-executable-for-linter-checks",
   "docs/docs/new-feature.md::#1-create-a-folder-under-specs_features": "https://github.com/ethereum/consensus-specs/blob/master/docs/docs/new-feature.md#1-create-a-folder-under-specs_features",
