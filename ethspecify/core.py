@@ -11,7 +11,7 @@ import tokenize
 import yaml
 
 
-def validate_exception_items(exceptions, version):
+def validate_exception_items(exceptions, version, require_exceptions_have_fork=False):
     """
     Validate that exception items actually exist in the spec.
     Raises an exception if any item doesn't exist.
@@ -69,6 +69,9 @@ def validate_exception_items(exceptions, version):
                 # If no fork specified, we'll check if it exists in any fork
                 item_name = item
                 fork = None
+                if require_exceptions_have_fork:
+                    errors.append(f"invalid key: {exception_key}.{item_name} (missing fork)")
+                    continue
 
             # Check if the item exists
             item_found = False
@@ -116,14 +119,19 @@ def load_config(directory=None):
                 # Get version from config, default to 'nightly'
                 version = config.get('version', 'nightly')
 
+                specrefs_require = False
+                if 'specrefs' in config and isinstance(config['specrefs'], dict):
+                    specrefs_require = config['specrefs'].get('require_exceptions_have_fork', False)
+                require_exceptions_have_fork = config.get('require_exceptions_have_fork', False) or specrefs_require
+
                 # Validate exceptions in root config
                 if 'exceptions' in config:
-                    validate_exception_items(config['exceptions'], version)
+                    validate_exception_items(config['exceptions'], version, require_exceptions_have_fork)
 
                 # Also validate exceptions in specrefs section if present
                 if 'specrefs' in config and isinstance(config['specrefs'], dict):
                     if 'exceptions' in config['specrefs']:
-                        validate_exception_items(config['specrefs']['exceptions'], version)
+                        validate_exception_items(config['specrefs']['exceptions'], version, require_exceptions_have_fork)
 
                 return config
         except (yaml.YAMLError, IOError) as e:
