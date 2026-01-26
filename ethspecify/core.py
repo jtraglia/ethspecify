@@ -236,14 +236,6 @@ def diff(a_name, a_content, b_name, b_content):
 
 
 @functools.lru_cache()
-def get_links(version="nightly"):
-    url = f"https://raw.githubusercontent.com/jtraglia/ethspecify/main/pyspec/{version}/links.json"
-    response = requests.get(url)
-    response.raise_for_status()
-    return response.json()
-
-
-@functools.lru_cache()
 def get_pyspec(version="nightly"):
     url = f"https://raw.githubusercontent.com/jtraglia/ethspecify/main/pyspec/{version}/pyspec.json"
     response = requests.get(url)
@@ -563,21 +555,37 @@ def get_spec_item(attributes, config=None):
                 raise Exception("there is no previous spec for this")
         return diff(previous_fork, strip_comments(previous_spec), fork, strip_comments(spec))
     if style == "link":
-        if "function" in attributes or "fn" in attributes:
-            if "function" in attributes and "fn" in attributes:
-                raise Exception(f"cannot contain 'function' and 'fn'")
-            if "function" in attributes:
-                function_name = attributes["function"]
-            else:
-                function_name = attributes["fn"]
-            for key, value in get_links(version).items():
-                if fork in key and key.endswith(function_name):
-                    return value
-            return "Could not find link"
-        else:
+        link = build_spec_link(attributes, fork, version)
+        if link is None:
             return "Not available for this type of spec"
+        return link
     else:
         raise Exception("invalid style type")
+
+
+def build_spec_link(attributes, fork, version):
+    base = f"https://ethspec.tools/#specs/{version}"
+    if "function" in attributes or "fn" in attributes:
+        if "function" in attributes and "fn" in attributes:
+            raise Exception(f"cannot contain 'function' and 'fn'")
+        function_name = attributes.get("function", attributes.get("fn"))
+        return f"{base}/functions-{function_name}-{fork}"
+    if "constant_var" in attributes:
+        return f"{base}/constant_vars-{attributes['constant_var']}-{fork}"
+    if "preset_var" in attributes:
+        return f"{base}/preset_vars-{attributes['preset_var']}-{fork}"
+    if "config_var" in attributes:
+        return f"{base}/config_vars-{attributes['config_var']}-{fork}"
+    if "custom_type" in attributes:
+        return f"{base}/custom_types-{attributes['custom_type']}-{fork}"
+    if "ssz_object" in attributes or "container" in attributes:
+        if "ssz_object" in attributes and "container" in attributes:
+            raise Exception(f"cannot contain 'ssz_object' and 'container'")
+        object_name = attributes.get("ssz_object", attributes.get("container"))
+        return f"{base}/ssz_objects-{object_name}-{fork}"
+    if "dataclass" in attributes:
+        return f"{base}/dataclasses-{attributes['dataclass']}-{fork}"
+    return None
 
 
 def extract_attributes(tag):

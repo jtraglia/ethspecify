@@ -158,11 +158,11 @@ def is_fully_withdrawable_validator(validator: Validator, balance: Gwei, epoch: 
 
 ### `link`
 
-This style displays a GitHub link to the specification item.
+This style displays an ethspec.tools link to the specification item.
 
 ```
 <spec fn="apply_pending_deposit" fork="electra" style="link" hash="83ee9126">
-https://github.com/ethereum/consensus-specs/blob/dev/specs/electra/beacon-chain.md#new-apply_pending_deposit
+https://ethspec.tools/#specs/v1.7.0-alpha.1/functions-apply_pending_deposit-electra
 </spec>
 ```
 
