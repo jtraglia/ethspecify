@@ -3,7 +3,7 @@ import json
 import os
 import sys
 
-from .core import grep, replace_spec_tags, get_pyspec, get_latest_fork, get_spec_item_history, load_config, run_checks, sort_specref_yaml, generate_specref_files, get_yaml_filename_for_spec_attr, get_spec_attr_and_name, add_missing_entries_to_yaml
+from .core import grep, replace_spec_tags, get_pyspec, get_spec_item_history, load_config, run_checks, sort_specref_yaml, generate_specref_files
 
 
 def process(args):
