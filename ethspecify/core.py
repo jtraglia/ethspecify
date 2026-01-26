@@ -1798,6 +1798,31 @@ def add_missing_spec_items_to_yaml_files(project_dir, config, specrefs_files):
     """
     version = config.get('version', 'nightly')
     preset = 'mainnet'  # Could make this configurable
+    specrefs_config = config.get('specrefs', {})
+
+    # Resolve exceptions (support root or specrefs section, but not both)
+    if isinstance(specrefs_config, list):
+        exceptions = config.get('exceptions', {})
+    else:
+        specrefs_exceptions = specrefs_config.get('exceptions', {})
+        root_exceptions = config.get('exceptions', {})
+        if specrefs_exceptions and root_exceptions:
+            print("Warning: Exceptions found in both root and specrefs sections. Using specrefs exceptions.")
+            exceptions = specrefs_exceptions
+        elif specrefs_exceptions:
+            exceptions = specrefs_exceptions
+        else:
+            exceptions = root_exceptions
+
+    category_exception_keys = {
+        'ssz_objects': ['ssz_objects', 'ssz_object', 'containers', 'container'],
+        'config_vars': ['configs', 'config_variables', 'config_var'],
+        'preset_vars': ['presets', 'preset_variables', 'preset_var'],
+        'dataclasses': ['dataclasses', 'dataclass'],
+        'functions': ['functions', 'fn'],
+        'constant_vars': ['constants', 'constant_variables', 'constant_var'],
+        'custom_types': ['custom_types', 'custom_type']
+    }
 
     # Get all spec items
     pyspec = get_pyspec(version)
@@ -1830,6 +1855,14 @@ def add_missing_spec_items_to_yaml_files(project_dir, config, specrefs_files):
             continue
 
         category, spec_attr = filename_to_category[yaml_basename]
+        type_exceptions = []
+        if isinstance(exceptions, dict) and category in category_exception_keys:
+            for key in category_exception_keys[category]:
+                if key in exceptions:
+                    type_exceptions = exceptions[key]
+                    break
+        if type_exceptions and not isinstance(type_exceptions, list):
+            type_exceptions = [type_exceptions]
 
         # Collect all items in this category organized by name and fork
         items_by_name = {}
@@ -1884,6 +1917,17 @@ def add_missing_spec_items_to_yaml_files(project_dir, config, specrefs_files):
                 if prev_content is None or spec_content != prev_content:
                     versions.append((fork, item_data, spec_content))
                     prev_content = spec_content
+
+            # Skip versions that are excepted for this item
+            if type_exceptions:
+                versions = [
+                    (fork, item_data, spec_content)
+                    for fork, item_data, spec_content in versions
+                    if not is_excepted(item_name, fork, type_exceptions)
+                ]
+
+            if not versions:
+                continue
 
             # Create entries based on number of unique versions
             use_fork_suffix = len(versions) > 1
