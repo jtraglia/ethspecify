@@ -90,11 +90,6 @@ jobs:
             # Create tag directory and copy files
             mkdir -p "../pyspec/$tag"
             cp pyspec.json "../pyspec/$tag/"
-
-            # Build links for this tag
-            cd ..
-            python3 ./scripts/links.py consensus-specs "https://github.com/ethereum/consensus-specs/blob/$tag" --output "pyspec/$tag/links.json"
-            cd consensus-specs
           done
 
       - name: Commit and Push Changes

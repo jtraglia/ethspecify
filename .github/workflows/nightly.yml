@@ -22,11 +22,6 @@ jobs:
         run: |
           git clone https://github.com/ethereum/consensus-specs.git
 
-      - name: Build Pyspec Links JSON
-        run: |
-          mkdir -p pyspec/nightly
-          python3 ./scripts/links.py consensus-specs https://github.com/ethereum/consensus-specs/blob/master --output pyspec/nightly/links.json
-
       - name: Apply Patch to Consensus Specs
         run: |
           cd consensus-specs
