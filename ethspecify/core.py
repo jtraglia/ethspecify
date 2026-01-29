@@ -875,7 +875,7 @@ def load_yaml_entries(yaml_file):
         return []
 
 
-def extract_spec_tag_key(spec_content):
+def extract_spec_tag_key(spec_content, alias_groups=None, alias_preference=None):
     """Extract a unique key from spec tag to identify duplicates."""
     if not spec_content:
         return None
@@ -894,7 +894,14 @@ def extract_spec_tag_key(spec_content):
     for attr in ['fn', 'function', 'constant_var', 'config_var', 'preset_var',
                  'container', 'ssz_object', 'dataclass', 'custom_type']:
         if attr in attributes:
-            key_parts.append(f"{attr}:{attributes[attr]}")
+            normalized_attr = attr
+            if alias_groups:
+                for group_key, aliases in alias_groups.items():
+                    if attr in aliases:
+                        if alias_preference and group_key in alias_preference:
+                            normalized_attr = alias_preference[group_key]
+                        break
+            key_parts.append(f"{normalized_attr}:{attributes[attr]}")
             break
 
     if 'fork' in attributes:
@@ -923,18 +930,40 @@ def add_missing_entries_to_yaml(yaml_file, new_entries):
     # Load existing entries
     existing_entries = load_yaml_entries(yaml_file)
 
+    # Build alias preferences from the first existing entries in the file
+    alias_groups = {
+        'function': ['fn', 'function'],
+        'ssz_object': ['ssz_object', 'container'],
+    }
+    alias_preference = {}
+    for entry in existing_entries:
+        if not isinstance(entry, dict) or 'spec' not in entry:
+            continue
+        spec_content = entry.get('spec', '')
+        match = re.search(r'<spec\b([^>]*)>', spec_content)
+        if not match:
+            continue
+        attributes = extract_attributes(match.group(0))
+        for group_key, aliases in alias_groups.items():
+            if group_key in alias_preference:
+                continue
+            for alias in aliases:
+                if alias in attributes:
+                    alias_preference[group_key] = alias
+                    break
+
     # Build a set of existing spec tag keys
     existing_spec_keys = set()
     for entry in existing_entries:
         if isinstance(entry, dict) and 'spec' in entry:
-            spec_key = extract_spec_tag_key(entry['spec'])
+            spec_key = extract_spec_tag_key(entry['spec'], alias_groups, alias_preference)
             if spec_key:
                 existing_spec_keys.add(spec_key)
 
     # Filter out entries that already exist (based on spec tag, not name)
     entries_to_add = []
     for entry in new_entries:
-        spec_key = extract_spec_tag_key(entry.get('spec', ''))
+        spec_key = extract_spec_tag_key(entry.get('spec', ''), alias_groups, alias_preference)
         if spec_key and spec_key not in existing_spec_keys:
             entries_to_add.append(entry)
             existing_spec_keys.add(spec_key)  # Avoid duplicates within new entries
@@ -1862,6 +1891,10 @@ def add_missing_spec_items_to_yaml_files(project_dir, config, specrefs_files):
         'dataclasses.yml': ('dataclasses', 'dataclass'),
         'types.yml': ('custom_types', 'custom_type'),
     }
+    alias_groups = {
+        'functions': ['fn', 'function'],
+        'ssz_objects': ['container', 'ssz_object'],
+    }
 
     for yaml_file in specrefs_files:
         yaml_path = os.path.join(project_dir, yaml_file)
@@ -1871,6 +1904,26 @@ def add_missing_spec_items_to_yaml_files(project_dir, config, specrefs_files):
             continue
 
         category, spec_attr = filename_to_category[yaml_basename]
+
+        # Prefer the first alias used in the file for this category.
+        if category in alias_groups:
+            existing_entries = load_yaml_entries(yaml_path)
+            preferred_attr = None
+            for entry in existing_entries:
+                if not isinstance(entry, dict) or 'spec' not in entry:
+                    continue
+                match = re.search(r'<spec\b([^>]*)>', entry.get('spec', ''))
+                if not match:
+                    continue
+                attributes = extract_attributes(match.group(0))
+                for alias in alias_groups[category]:
+                    if alias in attributes:
+                        preferred_attr = alias
+                        break
+                if preferred_attr:
+                    break
+            if preferred_attr:
+                spec_attr = preferred_attr
         type_exceptions = []
         if isinstance(exceptions, dict) and category in category_exception_keys:
             for key in category_exception_keys[category]:
