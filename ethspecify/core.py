@@ -1656,8 +1656,8 @@ def run_checks(project_dir, config):
                 source_root = os.path.join(project_dir, search_root_rel) if not os.path.isabs(search_root_rel) else search_root_rel
                 source_root = os.path.abspath(source_root)
             else:
-                # Default behavior: project directory itself
-                source_root = project_dir
+                # Default behavior: if we're in a specrefs directory, search in the parent directory
+                source_root = os.path.dirname(project_dir) if os.path.basename(project_dir) == 'specrefs' else project_dir
 
             valid_count, total_count, source_errors = check_source_files(yaml_path, source_root, [])
 
@@ -1717,8 +1717,8 @@ def run_checks(project_dir, config):
                 source_root = os.path.join(project_dir, search_root_rel) if not os.path.isabs(search_root_rel) else search_root_rel
                 source_root = os.path.abspath(source_root)
             else:
-                # Default behavior: project directory itself
-                source_root = project_dir
+                # Default behavior: if we're in a specrefs directory, search in the parent directory
+                source_root = os.path.dirname(project_dir) if os.path.basename(project_dir) == 'specrefs' else project_dir
 
             valid_count, total_count, source_errors = check_source_files(yaml_path, source_root, all_exceptions)
 
