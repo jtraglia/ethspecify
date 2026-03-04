@@ -62,8 +62,8 @@ items. For example:
 <spec fn="is_active_validator" fork="phase0" />
 ```
 
-Then run `ethspecify process` to populate the tag body with the
-corresponding specification content:
+Then run `ethspecify` to populate the tag body with the corresponding
+specification content:
 
 ```
 <spec fn="is_active_validator" fork="phase0" hash="5765e850">
@@ -92,9 +92,9 @@ def is_active_validator(validator: Validator, epoch: Epoch) -> bool:
 
 ## Centralized References
 
-Specrefs are YAML files that map specification items (constants,
-functions, containers, etc.) to their corresponding source file
-locations.
+Specification references (specrefs) are YAML files that map
+specification items (constants, functions, containers, etc.) to
+their corresponding source file locations.
 
 ### Configure
 
@@ -104,7 +104,7 @@ The following options can be set in the `specrefs` section of
 | Option | Default | Description |
 |--------|---------|-------------|
 | `search_root` | `.` | Root directory for resolving source file paths |
-| `auto_standardize_names` | `false` | Rename entries to `name#fork` format |
+| `auto_standardize_names` | `false` | Rename entries to `item#fork` format |
 | `auto_add_missing_entries` | `false` | Add missing specification items with empty sources |
 | `require_exceptions_have_fork` | `false` | Require exceptions to use `item#fork` format |
 
@@ -170,7 +170,7 @@ If it is a specific part of a file:
     </spec>
 ```
 
-You can also use regex in the searches if that is necessary:
+Regex is also supported in searches:
 
 ```yaml
 - name: ATTESTATION_DUE_BPS
@@ -202,20 +202,15 @@ implementation. Add them to the exceptions list in
 
 ```yaml
 specrefs:
-  files:
-    - containers.yml
-    - functions.yml
-    # ...
+  exceptions:
+    containers:
+      # Not defined, unnecessary
+      - Eth1Block
 
-exceptions:
-  containers:
-    # Not defined, unnecessary
-    - Eth1Block
-
-  functions:
-    # No light client support
-    - is_valid_light_client_header
-    - process_light_client_update
+    functions:
+      # No light client support
+      - is_valid_light_client_header
+      - process_light_client_update
 ```
 
 ## Style Options
