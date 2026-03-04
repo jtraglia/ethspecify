@@ -1656,8 +1656,8 @@ def run_checks(project_dir, config):
                 source_root = os.path.join(project_dir, search_root_rel) if not os.path.isabs(search_root_rel) else search_root_rel
                 source_root = os.path.abspath(source_root)
             else:
-                # Default behavior: parent directory
-                source_root = os.path.dirname(project_dir)
+                # Default behavior: project directory itself
+                source_root = project_dir
 
             valid_count, total_count, source_errors = check_source_files(yaml_path, source_root, [])
 
@@ -1717,8 +1717,8 @@ def run_checks(project_dir, config):
                 source_root = os.path.join(project_dir, search_root_rel) if not os.path.isabs(search_root_rel) else search_root_rel
                 source_root = os.path.abspath(source_root)
             else:
-                # Default behavior: parent directory
-                source_root = os.path.dirname(project_dir)
+                # Default behavior: project directory itself
+                source_root = project_dir
 
             valid_count, total_count, source_errors = check_source_files(yaml_path, source_root, all_exceptions)
 
@@ -2022,6 +2022,30 @@ def add_missing_spec_items_to_yaml_files(project_dir, config, specrefs_files):
             add_missing_entries_to_yaml(yaml_path, new_entries)
 
 
+def generate_config_file(version="nightly"):
+    """Generate a .ethspecify.yml config file in the current directory."""
+    config_path = '.ethspecify.yml'
+    with open(config_path, 'w') as f:
+        f.write(f'version: {version}\n')
+        f.write('style: full\n')
+        f.write('\n')
+        f.write('specrefs:\n')
+        f.write('  search_root: .\n')
+        f.write('  auto_standardize_names: true\n')
+        f.write('  auto_add_missing_entries: true\n')
+        f.write('  require_exceptions_have_fork: true\n')
+        f.write('\n')
+        f.write('  exceptions:\n')
+        f.write('    # Add any exceptions here\n')
+
+    # Strip trailing whitespace
+    with open(config_path, 'r') as f:
+        lines = f.readlines()
+    with open(config_path, 'w') as f:
+        for line in lines:
+            f.write(line.rstrip() + '\n')
+
+
 def generate_specref_files(output_dir, version="nightly", preset="mainnet"):
     """
     Generate specref YAML files without sources for manual mapping.
@@ -2147,17 +2171,21 @@ def generate_specref_files(output_dir, version="nightly", preset="mainnet"):
                     for line in entry['spec'].split('\n'):
                         f.write(f'    {line}\n')
 
-    # Create .ethspecify.yml config file
-    config_path = os.path.join(output_dir, '.ethspecify.yml')
+    # Create .ethspecify.yml config file in current directory
+    config_path = '.ethspecify.yml'
     with open(config_path, 'w') as f:
         f.write(f'version: {version}\n')
         f.write('style: full\n')
         f.write('\n')
         f.write('specrefs:\n')
+        f.write('  search_root: .\n')
+        f.write('  auto_standardize_names: true\n')
+        f.write('  auto_add_missing_entries: true\n')
+        f.write('  require_exceptions_have_fork: true\n')
         f.write('  files:\n')
         for category, (filename, _) in category_map.items():
             if items_by_category[category]:
-                f.write(f'    - {filename}\n')
+                f.write(f'    - {output_dir}/{filename}\n')
         f.write('\n')
         f.write('  exceptions:\n')
         f.write('    # Add any exceptions here\n')

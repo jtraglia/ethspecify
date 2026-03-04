@@ -1,38 +1,131 @@
 # ethspecify
 
-A tool for referencing the Ethereum specifications in clients.
+A tool for referencing the Ethereum specifications in clients. This will:
 
-The idea is that ethspecify will help developers keep track of when the specification changes. It
-will also help auditors verify that the client implementations match the specifications. Ideally,
-this is configured as a CI check which notifies client developers when the specification changes.
-When that happens, they can update the implementations appropriately.
+- Help developers keep track of specification changes.
+- Help auditors find important functions in client implementations.
 
-## Getting started
+## Table of contents
 
-### Installation
+- [Getting Started](#getting-started)
+  - [Install](#install)
+  - [Initialize](#initialize)
+- [Inline References](#inline-references)
+- [Centralized References](#centralized-references)
+  - [Configure](#configure)
+  - [Update](#update)
+  - [Map](#map)
+  - [Check](#check)
+  - [Exceptions](#exceptions)
+- [Style Options](#style-options)
+  - [`hash`](#hash)
+  - [`full`](#full)
+  - [`link`](#link)
+  - [`diff`](#diff)
+
+## Getting Started
+
+### Install
 
 ```
 pipx install ethspecify
 ```
 
-### Initialize specrefs
+### Initialize
 
-From the root of the client source directory, initialize a directory for specrefs:
+Create a `.ethspecify.yml` config file:
 
 ```
 $ ethspecify init v1.6.0-beta.0
-Initializing specrefs directory: v1.6.0-beta.0
-Successfully created specrefs directory at: specrefs
+Successfully created .ethspecify.yml
 ```
 
-This creates a `specrefs` directory with `.ethspecify.yml` and YAML files for each spec category
-(constants, configs, presets, functions, containers, dataclasses, types).
+To also generate a `specrefs/` directory with a YAML file for each
+specification category, use the `--specrefs` flag:
 
-### Map sources
+```
+$ ethspecify init v1.6.0-beta.0 --specrefs
+Initializing specrefs directory: v1.6.0-beta.0
+Successfully created .ethspecify.yml and specrefs/ directory
+```
 
-Edit the YAML files to add sources for where each spec item is implemented.
+> [!TIP]
+> `nightly` is also a valid version, which tracks the latest
+> development specifications.
 
-If it's the entire file:
+## Inline References
+
+Add `<spec>` tags anywhere in the codebase to reference specification
+items. For example:
+
+```
+<spec fn="is_active_validator" fork="phase0" />
+```
+
+Then run `ethspecify process` to populate the tag body with the
+corresponding specification content:
+
+```
+<spec fn="is_active_validator" fork="phase0" hash="5765e850">
+def is_active_validator(validator: Validator, epoch: Epoch) -> bool:
+    """
+    Check if ``validator`` is active.
+    """
+    return validator.activation_epoch <= epoch < validator.exit_epoch
+</spec>
+```
+
+> [!NOTE]
+> The indentation of the `<spec>` tag is preserved when populating
+> the body. This means spec tags inside comments will have their
+> content indented to match:
+>
+> ```java
+> // <spec fn="is_active_validator" fork="phase0" hash="5765e850">
+> // def is_active_validator(validator: Validator, epoch: Epoch) -> bool:
+> //     """
+> //     Check if ``validator`` is active.
+> //     """
+> //     return validator.activation_epoch <= epoch < validator.exit_epoch
+> // </spec>
+> ```
+
+## Centralized References
+
+Specrefs are YAML files that map specification items (constants,
+functions, containers, etc.) to their corresponding source file
+locations.
+
+### Configure
+
+The following options can be set in the `specrefs` section of
+`.ethspecify.yml`:
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `search_root` | `.` | Root directory for resolving source file paths |
+| `auto_standardize_names` | `false` | Rename entries to `name#fork` format |
+| `auto_add_missing_entries` | `false` | Add missing specification items with empty sources |
+| `require_exceptions_have_fork` | `false` | Require exceptions to use `item#fork` format |
+
+### Update
+
+To update to a newer specification version, change the `version`
+field in `.ethspecify.yml` and run:
+
+```
+$ ethspecify
+```
+
+This updates the specification content in the YAML files to match
+the new version.
+
+### Map
+
+Edit the YAML files to add sources for where each specification
+item is implemented.
+
+If it is the entire file:
 
 ```yaml
 - name: BlobParameters
@@ -46,7 +139,7 @@ If it's the entire file:
     </spec>
 ```
 
-If it's multiple entire files:
+If it is multiple entire files:
 
 ```yaml
 - name: BlobsBundleDeneb
@@ -64,7 +157,7 @@ If it's multiple entire files:
     </spec>
 ```
 
-If it's a specific part of a file:
+If it is a specific part of a file:
 
 ```yaml
 - name: EFFECTIVE_BALANCE_INCREMENT
@@ -91,19 +184,21 @@ You can also use regex in the searches if that is necessary:
     </spec>
 ```
 
-### Check specrefs
+### Check
 
-Run the check command in CI to verify all spec items are properly mapped:
+Run the check command in CI to verify all specification items are
+properly mapped:
 
 ```
-$ ethspecify check --path=specrefs
+$ ethspecify check
 MISSING: constants.BLS_MODULUS#deneb
 ```
 
-### Add exceptions
+### Exceptions
 
-Some spec items may not be implemented in your client. Add them to the exceptions list in
-`specrefs/.ethspecify.yml`:
+Some specification items may not have a corresponding
+implementation. Add them to the exceptions list in
+`.ethspecify.yml`:
 
 ```yaml
 specrefs:
@@ -125,22 +220,26 @@ exceptions:
 
 ## Style Options
 
-This attribute can be used to change how the specification content is shown.
+This attribute can be used to change how the specification content
+is shown.
 
-### `hash` (default)
+### `hash`
 
-This style adds a hash of the specification content to the spec tag, without showing the content.
+This style adds a hash of the specification content to the
+`<spec>` tag, without showing the content.
 
 ```
 <spec fn="apply_deposit" fork="electra" hash="c723ce7b" />
 ```
 
 > [!NOTE]
-> The hash is the first 8 characters of the specification content's SHA256 digest.
+> The hash is the first 8 characters of the specification
+> content's SHA256 digest.
 
 ### `full`
 
-This style displays the whole content of this specification item, including comments.
+This style displays the whole content of this specification item,
+including comments.
 
 ```
 <spec fn="is_fully_withdrawable_validator" fork="deneb" style="full">
@@ -158,7 +257,8 @@ def is_fully_withdrawable_validator(validator: Validator, balance: Gwei, epoch: 
 
 ### `link`
 
-This style displays an ethspec.tools link to the specification item.
+This style displays an ethspec.tools link to the specification
+item.
 
 ```
 <spec fn="apply_pending_deposit" fork="electra" style="link" hash="83ee9126">
@@ -168,7 +268,8 @@ https://ethspec.tools/#specs/v1.7.0-alpha.1/functions-apply_pending_deposit-elec
 
 ### `diff`
 
-This style displays a diff with the previous fork's version of the specification.
+This style displays a diff with the previous fork's version of the
+specification.
 
 ```
 <spec ssz_object="BeaconState" fork="electra" style="diff">
@@ -191,10 +292,12 @@ This style displays a diff with the previous fork's version of the specification
 ```
 
 > [!NOTE]
-> Comments are stripped from the specifications when the `diff` style is used. We do this because
-> these complicate the diff; the "[Modified in Fork]" comments aren't valuable here.
+> Comments are stripped from the specifications when the `diff`
+> style is used. This is because they complicate the diff; the
+> "[Modified in Fork]" comments are not valuable here.
 
-This can be used with any specification item, like functions too:
+This can be used with any specification item, like functions
+too:
 
 ```
 <spec fn="is_eligible_for_activation_queue" fork="electra" style="diff">

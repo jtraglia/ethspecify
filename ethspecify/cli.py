@@ -3,7 +3,7 @@ import json
 import os
 import sys
 
-from .core import grep, replace_spec_tags, get_pyspec, get_spec_item_history, load_config, run_checks, sort_specref_yaml, generate_specref_files
+from .core import grep, replace_spec_tags, get_pyspec, get_spec_item_history, load_config, run_checks, sort_specref_yaml, generate_specref_files, generate_config_file
 
 
 def process(args):
@@ -200,25 +200,40 @@ def list_forks(args):
 
 
 def init(args):
-    """Initialize a specrefs directory with basic configuration and empty source mappings."""
-    output_dir = args.path or "specrefs"
+    """Initialize .ethspecify.yml and optionally a specrefs directory."""
     version = args.version
 
-    # Check if output directory already exists
-    if os.path.exists(output_dir):
-        print(f"Error: directory {repr(output_dir)} already exists.")
-        print("Please specify a different directory or remove the existing one.")
+    # Check if .ethspecify.yml already exists
+    if os.path.exists('.ethspecify.yml'):
+        print("Error: '.ethspecify.yml' already exists.")
+        print("Please remove the existing config file first.")
         return 1
 
-    try:
-        # Generate the specref files
-        print(f"Initializing specrefs directory: {version}")
-        generate_specref_files(output_dir, version, "mainnet")
-        print(f"Successfully created specrefs directory at: {output_dir}")
-        return 0
-    except Exception as e:
-        print(f"Error: {e}")
-        return 1
+    if args.specrefs:
+        output_dir = args.path or "specrefs"
+
+        # Check if output directory already exists
+        if os.path.exists(output_dir):
+            print(f"Error: directory {repr(output_dir)} already exists.")
+            print("Please specify a different directory or remove the existing one.")
+            return 1
+
+        try:
+            print(f"Initializing specrefs directory: {version}")
+            generate_specref_files(output_dir, version, "mainnet")
+            print(f"Successfully created .ethspecify.yml and {output_dir}/ directory")
+            return 0
+        except Exception as e:
+            print(f"Error: {e}")
+            return 1
+    else:
+        try:
+            generate_config_file(version)
+            print(f"Successfully created .ethspecify.yml")
+            return 0
+        except Exception as e:
+            print(f"Error: {e}")
+            return 1
 
 
 def main():
@@ -296,12 +311,17 @@ def main():
     )
 
     # Parser for 'init' command
-    init_parser = subparsers.add_parser("init", help="Initialize a specrefs directory")
+    init_parser = subparsers.add_parser("init", help="Initialize .ethspecify.yml")
     init_parser.set_defaults(func=init)
     init_parser.add_argument(
         "version",
         type=str,
         help="Specification version (e.g., 'nightly' or 'v1.6.0-alpha.5')",
+    )
+    init_parser.add_argument(
+        "--specrefs",
+        action="store_true",
+        help="Also create a specrefs directory with YAML files for each spec category",
     )
     init_parser.add_argument(
         "--path",
